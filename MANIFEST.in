@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+include DEPLOY_README.md
+recursive-include jvbundler *.base
+recursive-include jvbundler/templates *.template
+recursive-include jvbundler/templates *.j2
