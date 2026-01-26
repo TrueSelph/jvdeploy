@@ -6,12 +6,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from jvbundler.cli import handle_generate, handle_init, main
+from jvdeploy.cli import handle_generate, handle_init, main
 
 
 def test_main_help_flag(monkeypatch, capsys):
     """Test main function with help flag."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -26,7 +26,7 @@ def test_main_help_flag(monkeypatch, capsys):
 
 def test_main_version_flag(monkeypatch, capsys):
     """Test main function with version flag."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "--version"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "--version"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -39,7 +39,7 @@ def test_main_version_flag(monkeypatch, capsys):
 
 def test_main_no_command(monkeypatch, capsys):
     """Test main function with no command shows help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -52,7 +52,7 @@ def test_main_no_command(monkeypatch, capsys):
 
 def test_generate_command_success(mock_jvagent_app, monkeypatch, capsys):
     """Test generate command with successful execution."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate", str(mock_jvagent_app)])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -70,7 +70,7 @@ def test_generate_command_success(mock_jvagent_app, monkeypatch, capsys):
 def test_generate_command_current_directory(mock_jvagent_app, monkeypatch, capsys):
     """Test generate command in current directory."""
     monkeypatch.chdir(mock_jvagent_app)
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -84,7 +84,7 @@ def test_generate_command_current_directory(mock_jvagent_app, monkeypatch, capsy
 
 def test_generate_command_invalid_path(monkeypatch, capsys):
     """Test generate command with invalid path."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate", "/invalid/path"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", "/invalid/path"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -97,7 +97,7 @@ def test_generate_command_missing_app_yaml(temp_dir, monkeypatch):
     app_root = temp_dir / "invalid_app"
     app_root.mkdir()
 
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate", str(app_root)])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(app_root)])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -107,7 +107,7 @@ def test_generate_command_missing_app_yaml(temp_dir, monkeypatch):
 
 def test_init_command_help(monkeypatch, capsys):
     """Test init command help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "init", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "init", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -122,7 +122,7 @@ def test_init_command_help(monkeypatch, capsys):
 
 def test_deploy_command_help(monkeypatch, capsys):
     """Test deploy command help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "deploy", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "deploy", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -136,7 +136,7 @@ def test_deploy_command_help(monkeypatch, capsys):
 
 def test_deploy_lambda_help(monkeypatch, capsys):
     """Test deploy lambda command help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "deploy", "lambda", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "deploy", "lambda", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -151,7 +151,7 @@ def test_deploy_lambda_help(monkeypatch, capsys):
 
 def test_status_command_help(monkeypatch, capsys):
     """Test status command help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "status", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "status", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -164,7 +164,7 @@ def test_status_command_help(monkeypatch, capsys):
 
 def test_logs_command_help(monkeypatch, capsys):
     """Test logs command help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "logs", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "logs", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -177,7 +177,7 @@ def test_logs_command_help(monkeypatch, capsys):
 
 def test_destroy_command_help(monkeypatch, capsys):
     """Test destroy command help."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "destroy", "--help"])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "destroy", "--help"])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -191,7 +191,7 @@ def test_destroy_command_help(monkeypatch, capsys):
 def test_debug_flag(mock_jvagent_app, monkeypatch, capsys):
     """Test debug flag enables debug logging."""
     monkeypatch.setattr(
-        sys, "argv", ["jvbundler", "--debug", "generate", str(mock_jvagent_app)]
+        sys, "argv", ["jvdeploy", "--debug", "generate", str(mock_jvagent_app)]
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -202,9 +202,9 @@ def test_debug_flag(mock_jvagent_app, monkeypatch, capsys):
 
 def test_main_keyboard_interrupt(mock_jvagent_app, monkeypatch, capsys):
     """Test main function handles keyboard interrupt gracefully."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate", str(mock_jvagent_app)])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
-    with patch("jvbundler.cli.Bundler") as mock_bundler_class:
+    with patch("jvdeploy.cli.Bundler") as mock_bundler_class:
         mock_bundler = Mock()
         mock_bundler.generate_dockerfile.side_effect = KeyboardInterrupt()
         mock_bundler_class.return_value = mock_bundler
@@ -220,9 +220,9 @@ def test_main_keyboard_interrupt(mock_jvagent_app, monkeypatch, capsys):
 
 def test_main_unexpected_exception(mock_jvagent_app, monkeypatch):
     """Test main function handles unexpected exceptions."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate", str(mock_jvagent_app)])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
-    with patch("jvbundler.cli.Bundler") as mock_bundler_class:
+    with patch("jvdeploy.cli.Bundler") as mock_bundler_class:
         mock_bundler = Mock()
         mock_bundler.generate_dockerfile.side_effect = RuntimeError("Unexpected error")
         mock_bundler_class.return_value = mock_bundler
@@ -235,9 +235,9 @@ def test_main_unexpected_exception(mock_jvagent_app, monkeypatch):
 
 def test_bundler_generation_fails(mock_jvagent_app, monkeypatch):
     """Test when bundler generation fails."""
-    monkeypatch.setattr(sys, "argv", ["jvbundler", "generate", str(mock_jvagent_app)])
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
-    with patch("jvbundler.cli.Bundler") as mock_bundler_class:
+    with patch("jvdeploy.cli.Bundler") as mock_bundler_class:
         mock_bundler = Mock()
         mock_bundler.generate_dockerfile.return_value = False
         mock_bundler_class.return_value = mock_bundler

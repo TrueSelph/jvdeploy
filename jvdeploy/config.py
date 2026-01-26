@@ -1,4 +1,4 @@
-"""Configuration management for jvbundler deployments.
+"""Configuration management for jvdeploy deployments.
 
 Handles loading, validation, and processing of deploy.yaml configuration files.
 """

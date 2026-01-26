@@ -7,7 +7,7 @@ by extending a base template and including pip dependencies from action info.yam
 import logging
 from pathlib import Path
 
-from jvbundler.dockerfile_generator import generate_dockerfile
+from jvdeploy.dockerfile_generator import generate_dockerfile
 
 logger = logging.getLogger(__name__)
 

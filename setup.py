@@ -1,4 +1,4 @@
-"""Setup script for the jvbundler package."""
+"""Setup script for the jvdeploy package."""
 
 from setuptools import find_packages, setup
 
@@ -6,14 +6,14 @@ with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="jvbundler",
+    name="jvdeploy",
     version="0.1.0",
     description="Dockerfile generator for jvagent applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="TrueSelph Inc.",
     author_email="adminh@trueselph.com",
-    url="https://github.com/your-org/jvbundler",
+    url="https://github.com/your-org/jvdeploy",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -32,7 +32,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "jvbundler=jvbundler.cli:main",
+            "jvdeploy=jvdeploy.cli:main",
         ],
     },
     classifiers=[

@@ -1,10 +1,10 @@
-# jvbundler
+# jvdeploy
 
 A standalone Dockerfile generator and deployment tool for jvagent applications. This tool discovers action dependencies from `info.yaml` files, generates production-ready Dockerfiles with optimized layer caching, and deploys applications to AWS Lambda and Kubernetes.
 
 ## Overview
 
-`jvbundler` is a Python CLI tool that automates Dockerfile generation and deployment for jvagent applications. It:
+`jvdeploy` is a Python CLI tool that automates Dockerfile generation and deployment for jvagent applications. It:
 - Validates jvagent application structure (requires `app.yaml`)
 - Discovers pip dependencies from all action `info.yaml` files
 - Generates Dockerfiles with separate RUN commands per action for optimal layer caching
@@ -17,21 +17,21 @@ A standalone Dockerfile generator and deployment tool for jvagent applications. 
 ### From Source
 
 ```bash
-cd jvbundler
+cd jvdeploy
 pip install -e .
 ```
 
 ### With Deployment Features
 
 ```bash
-cd jvbundler
+cd jvdeploy
 pip install -e ".[deploy]"
 ```
 
 ### For Development
 
 ```bash
-cd jvbundler
+cd jvdeploy
 pip install -e ".[dev]"
 ```
 
@@ -44,16 +44,16 @@ Generate Dockerfiles using the `generate` command or the legacy direct invocatio
 ```bash
 # Generate Dockerfile in current directory
 cd my-jvagent-app
-jvbundler generate
+jvdeploy generate
 
 # Or using legacy syntax
-jvbundler
+jvdeploy
 
 # Generate Dockerfile for specific app
-jvbundler generate /path/to/my-app
+jvdeploy generate /path/to/my-app
 
 # With absolute path
-jvbundler generate ~/projects/my-jvagent-app
+jvdeploy generate ~/projects/my-jvagent-app
 ```
 
 ### Deployment (NEW)
@@ -62,20 +62,20 @@ Deploy jvagent applications to AWS Lambda or Kubernetes:
 
 ```bash
 # Initialize deployment configuration
-jvbundler init --lambda
+jvdeploy init --lambda
 
 # Deploy to AWS Lambda
 export JVAGENT_ADMIN_PASSWORD="your-secure-password"
-jvbundler deploy lambda --all
+jvdeploy deploy lambda --all
 
 # Check deployment status
-jvbundler status lambda
+jvdeploy status lambda
 
 # View logs
-jvbundler logs lambda --follow
+jvdeploy logs lambda --follow
 
 # Destroy deployment
-jvbundler destroy lambda --yes
+jvdeploy destroy lambda --yes
 ```
 
 For complete deployment documentation, see [DEPLOY_README.md](DEPLOY_README.md).
@@ -85,7 +85,7 @@ For complete deployment documentation, see [DEPLOY_README.md](DEPLOY_README.md).
 ```bash
 # 1. Initialize configuration
 cd my-jvagent-app
-jvbundler init --lambda
+jvdeploy init --lambda
 
 # 2. Edit deploy.yaml with your settings
 vim deploy.yaml
@@ -94,13 +94,13 @@ vim deploy.yaml
 export JVAGENT_ADMIN_PASSWORD="your-password"
 
 # 4. Deploy (dry-run first to test)
-jvbundler deploy lambda --all --dry-run
+jvdeploy deploy lambda --all --dry-run
 
 # 5. Actual deployment
-jvbundler deploy lambda --all
+jvdeploy deploy lambda --all
 
 # 6. Check the deployment
-jvbundler status lambda
+jvdeploy status lambda
 
 # 7. View your API URL in the output!
 ```
@@ -190,8 +190,8 @@ You can customize the base template by:
 ## Project Structure
 
 ```
-jvbundler/
-├── jvbundler/
+jvdeploy/
+├── jvdeploy/
 │   ├── __init__.py           # Package initialization
 │   ├── cli.py                # CLI entry point
 │   ├── bundler.py            # Main Bundler class
@@ -218,33 +218,33 @@ pytest
 ### Running Tests with Coverage
 
 ```bash
-pytest --cov=jvbundler --cov-report=html
+pytest --cov=jvdeploy --cov-report=html
 ```
 
 ### Code Formatting
 
 ```bash
-black jvbundler tests
+black jvdeploy tests
 ```
 
 ### Linting
 
 ```bash
-ruff check jvbundler tests
+ruff check jvdeploy tests
 ```
 
 ### Type Checking
 
 ```bash
-mypy jvbundler
+mypy jvdeploy
 ```
 
 ## API Usage
 
-You can also use `jvbundler` as a Python library:
+You can also use `jvdeploy` as a Python library:
 
 ```python
-from jvbundler import Bundler
+from jvdeploy import Bundler
 
 # Create bundler instance
 bundler = Bundler(app_root="/path/to/jvagent_app")
@@ -270,7 +270,7 @@ else:
 
 Install deployment dependencies with:
 ```bash
-pip install jvbundler[deploy]
+pip install jvdeploy[deploy]
 ```
 
 ## Features
@@ -322,4 +322,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-For issues and questions, please open an issue on the [GitHub repository](https://github.com/your-org/jvbundler/issues).
+For issues and questions, please open an issue on the [GitHub repository](https://github.com/your-org/jvdeploy/issues).

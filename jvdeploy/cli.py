@@ -1,4 +1,4 @@
-"""CLI entry point for jvbundler.
+"""CLI entry point for jvdeploy.
 
 Provides command-line interface for generating Dockerfiles and deploying jvagent applications.
 """
@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from jvbundler import Bundler
-from jvbundler.config import DeployConfig, DeployConfigError
+from jvdeploy import Bundler
+from jvdeploy.config import DeployConfig, DeployConfigError
 
 # Configure logging
 logging.basicConfig(
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def setup_argparse() -> argparse.ArgumentParser:
     """Set up argument parser with all commands and options."""
     parser = argparse.ArgumentParser(
-        prog="jvbundler",
+        prog="jvdeploy",
         description="Dockerfile generator and deployment tool for jvagent applications",
     )
 
@@ -463,9 +463,9 @@ def handle_init(args: argparse.Namespace) -> int:
                 return 0
 
         # Load template
-        import jvbundler
+        import jvdeploy
 
-        package_dir = Path(jvbundler.__file__).parent
+        package_dir = Path(jvdeploy.__file__).parent
         template_path = package_dir / "templates" / "deploy.yaml.template"
 
         if not template_path.exists():
@@ -507,9 +507,9 @@ def handle_init(args: argparse.Namespace) -> int:
         print("  2. Set required environment variables (e.g., JVAGENT_ADMIN_PASSWORD)")
 
         if enable_lambda:
-            print("  3. Deploy to Lambda: jvbundler deploy lambda --all")
+            print("  3. Deploy to Lambda: jvdeploy deploy lambda --all")
         if enable_k8s:
-            print("  3. Deploy to Kubernetes: jvbundler deploy k8s --all")
+            print("  3. Deploy to Kubernetes: jvdeploy deploy k8s --all")
 
         return 0
 
@@ -522,7 +522,7 @@ def handle_deploy(args: argparse.Namespace) -> int:
     """Handle deploy command."""
     if not args.platform:
         logger.error("Error: Please specify a platform (lambda or k8s)")
-        print("Usage: jvbundler deploy {lambda|k8s} [options]")
+        print("Usage: jvdeploy deploy {lambda|k8s} [options]")
         return 1
 
     # Check if no specific steps are requested, default to --all
@@ -554,7 +554,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
         if not config_path.exists():
             logger.error(f"Configuration file not found: {config_path}")
             print(
-                f"\n💡 Tip: Run 'jvbundler init' to create a deploy.yaml configuration"
+                f"\n💡 Tip: Run 'jvdeploy init' to create a deploy.yaml configuration"
             )
             return 1
 
@@ -593,7 +593,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
 
         # Import and create deployer
         try:
-            from jvbundler.aws import LambdaDeployer
+            from jvdeploy.aws import LambdaDeployer
         except ImportError:
             logger.error(
                 "boto3 is required for Lambda deployment. Install with: pip install boto3"
@@ -675,7 +675,7 @@ def handle_status(args: argparse.Namespace) -> int:
     """Handle status command."""
     if not args.platform:
         logger.error("Error: Please specify a platform (lambda or k8s)")
-        print("Usage: jvbundler status {lambda|k8s} [options]")
+        print("Usage: jvdeploy status {lambda|k8s} [options]")
         return 1
 
     if args.platform == "lambda":
@@ -719,7 +719,7 @@ def handle_status_lambda(args: argparse.Namespace) -> int:
 
         # Import and create deployer
         try:
-            from jvbundler.aws import LambdaDeployer
+            from jvdeploy.aws import LambdaDeployer
         except ImportError:
             logger.error("boto3 is required. Install with: pip install boto3")
             return 1
@@ -762,7 +762,7 @@ def handle_logs(args: argparse.Namespace) -> int:
     """Handle logs command."""
     if not args.platform:
         logger.error("Error: Please specify a platform (lambda or k8s)")
-        print("Usage: jvbundler logs {lambda|k8s} [options]")
+        print("Usage: jvdeploy logs {lambda|k8s} [options]")
         return 1
 
     if args.platform == "lambda":
@@ -917,7 +917,7 @@ def handle_destroy(args: argparse.Namespace) -> int:
     """Handle destroy command."""
     if not args.platform:
         logger.error("Error: Please specify a platform (lambda or k8s)")
-        print("Usage: jvbundler destroy {lambda|k8s} [options]")
+        print("Usage: jvdeploy destroy {lambda|k8s} [options]")
         return 1
 
     if args.platform == "lambda":
@@ -975,7 +975,7 @@ def handle_destroy_lambda(args: argparse.Namespace) -> int:
 
         # Import and create deployer
         try:
-            from jvbundler.aws import LambdaDeployer
+            from jvdeploy.aws import LambdaDeployer
         except ImportError:
             logger.error("boto3 is required. Install with: pip install boto3")
             return 1
@@ -1019,7 +1019,7 @@ def handle_destroy_k8s(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
-    """Main entry point for jvbundler CLI."""
+    """Main entry point for jvdeploy CLI."""
     try:
         parser = setup_argparse()
         args = parser.parse_args()
@@ -1027,11 +1027,11 @@ def main() -> None:
         # Handle debug flag
         if args.debug:
             logger.setLevel(logging.DEBUG)
-            logging.getLogger("jvbundler").setLevel(logging.DEBUG)
+            logging.getLogger("jvdeploy").setLevel(logging.DEBUG)
 
         # Handle no command (legacy behavior - generate)
         if not args.command:
-            # Legacy: jvbundler [path] with no subcommand
+            # Legacy: jvdeploy [path] with no subcommand
             # Default to generate behavior
             if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
                 args.command = "generate"

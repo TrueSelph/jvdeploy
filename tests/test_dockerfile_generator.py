@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from jvbundler.dockerfile_generator import (
+from jvdeploy.dockerfile_generator import (
     discover_action_dependencies,
     generate_dockerfile,
     generate_dockerfile_run_commands,

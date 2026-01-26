@@ -1,4 +1,4 @@
-# jvbundler deployment configuration
+# jvdeploy deployment configuration
 # This file defines how your jvagent application is deployed to AWS Lambda and/or Kubernetes
 
 version: "1.0"

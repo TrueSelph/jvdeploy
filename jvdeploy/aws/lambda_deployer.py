@@ -210,7 +210,7 @@ class LambdaDeployer:
                 else:
                     # Import docker builder
                     try:
-                        from jvbundler.docker_builder import DockerBuilder
+                        from jvdeploy.docker_builder import DockerBuilder
                     except ImportError as e:
                         raise LambdaDeployerError(
                             f"Failed to import docker_builder: {e}"
@@ -226,7 +226,7 @@ class LambdaDeployer:
                     # Create Docker builder
                     builder = DockerBuilder(
                         app_root=app_root,
-                        image_name=app_config.get("name", "app"),
+                        image_name=image_config.get("name", "app"),
                         image_tag=image_config.get("tag", "latest"),
                         platform=image_config.get("build", {}).get(
                             "platform", "linux/amd64"
@@ -272,6 +272,13 @@ class LambdaDeployer:
                     function_config=function_config,
                 )
                 results["function_arn"] = function_arn
+
+                # Ensure SQLite permissions if needed
+                self._ensure_sqlite_permissions(
+                    image_uri=image_uri,
+                    role_arn=role_arn,
+                    function_config=function_config,
+                )
 
             # Step 5: Create or update API Gateway / Function URL
             if create_api:
@@ -569,10 +576,10 @@ class LambdaDeployer:
                 f"Failed to auto-detect VPC config from EFS: {e}"
             ) from e
 
-    def _deploy_lambda_function(
+    def _build_lambda_config(
         self, image_uri: str, role_arn: str, function_config: Dict[str, Any]
-    ) -> str:
-        """Create or update Lambda function.
+    ) -> Dict[str, Any]:
+        """Build Lambda function configuration dictionary.
 
         Args:
             image_uri: Full ECR image URI
@@ -580,17 +587,10 @@ class LambdaDeployer:
             function_config: Function configuration
 
         Returns:
-            Function ARN
+            Configuration dictionary for create/update_function
         """
         function_name = function_config.get("name")
-        if not function_name:
-            raise LambdaDeployerError("function.name is required")
 
-        if self.dry_run:
-            logger.info(f"[DRY RUN] Would deploy Lambda function: {function_name}")
-            return f"arn:aws:lambda:{self.region}:123456789012:function:{function_name}"
-
-        # Build function configuration
         config = {
             "FunctionName": function_name,
             "Role": role_arn,
@@ -645,6 +645,32 @@ class LambdaDeployer:
                 )
                 config["VpcConfig"] = self._get_efs_vpc_config(file_system_id)
 
+        return config
+
+    def _deploy_lambda_function(
+        self, image_uri: str, role_arn: str, function_config: Dict[str, Any]
+    ) -> str:
+        """Create or update Lambda function.
+
+        Args:
+            image_uri: Full ECR image URI
+            role_arn: IAM role ARN
+            function_config: Function configuration
+
+        Returns:
+            Function ARN
+        """
+        function_name = function_config.get("name")
+        if not function_name:
+            raise LambdaDeployerError("function.name is required")
+
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Would deploy Lambda function: {function_name}")
+            return f"arn:aws:lambda:{self.region}:123456789012:function:{function_name}"
+
+        # Build function configuration
+        config = self._build_lambda_config(image_uri, role_arn, function_config)
+
         try:
             # Try to update existing function
             logger.info(f"Checking if function '{function_name}' exists...")
@@ -697,6 +723,101 @@ class LambdaDeployer:
 
             logger.info(f"✓ Created Lambda function: {function_arn}")
             return function_arn
+
+    def _ensure_sqlite_permissions(
+        self, image_uri: str, role_arn: str, function_config: Dict[str, Any]
+    ) -> None:
+        """Ensure SQLite database permissions are correct on EFS.
+
+        Args:
+            image_uri: Full ECR image URI
+            role_arn: IAM role ARN
+            function_config: Function configuration
+        """
+        # Check if we need to run this
+        env_vars = self.config.get("environment", {})
+        db_type = env_vars.get("JVSPATIAL_DB_TYPE", "json")
+        db_path = env_vars.get("JVSPATIAL_DB_PATH")
+
+        if db_type != "sqlite" or not db_path:
+            return
+
+        # Check if EFS is enabled
+        if not self.config.get("efs", {}).get("enabled", False):
+            return
+
+        logger.info(f"Ensuring write permissions for SQLite DB at {db_path}...")
+
+        if self.dry_run:
+            logger.info("[DRY RUN] Would run permission fix lambda")
+            return
+
+        setup_function_name = f"{function_config.get('name')}-setup-{int(time.time())}"
+
+        try:
+            # Build config for setup function
+            setup_config = self._build_lambda_config(
+                image_uri, role_arn, function_config
+            )
+            setup_config["FunctionName"] = setup_function_name
+
+            # Override command to fix permissions and satisfy Lambda Adapter
+            # 1. Create directory/file and set permissions
+            # 2. Start a dummy web server on 8080 so Lambda Adapter thinks we are healthy
+            #    and the Invoke request succeeds.
+            cmd = (
+                f"mkdir -p $(dirname {db_path}) && "
+                f"touch {db_path} && "
+                f"chmod 666 {db_path} && "
+                f"chmod 777 $(dirname {db_path}) && "
+                "python3 -c 'import http.server, socketserver; "
+                'print("Starting dummy server..."); '
+                'server = socketserver.TCPServer(("0.0.0.0", 8080), http.server.SimpleHTTPRequestHandler); '
+                "server.serve_forever()'"
+            )
+
+            setup_config["ImageConfig"] = {
+                "EntryPoint": ["/bin/sh", "-c"],
+                "Command": [cmd],
+            }
+
+            # Create setup function
+            logger.info(f"Creating temporary setup function: {setup_function_name}")
+            self.lambda_client.create_function(**setup_config)
+
+            # Wait for active
+            waiter = self.lambda_client.get_waiter("function_active")
+            waiter.wait(FunctionName=setup_function_name)
+
+            # Invoke function
+            logger.info("Invoking setup function...")
+            response = self.lambda_client.invoke(
+                FunctionName=setup_function_name,
+                InvocationType="RequestResponse",
+                LogType="Tail",
+            )
+
+            if response.get("FunctionError"):
+                logger.error(f"Setup function failed: {response.get('FunctionError')}")
+                # Try to get logs
+                import base64
+
+                if "LogResult" in response:
+                    logs = base64.b64decode(response["LogResult"]).decode("utf-8")
+                    logger.error(f"Logs:\n{logs}")
+            else:
+                logger.info("✓ SQLite permissions fixed successfully")
+
+        except Exception as e:
+            logger.warning(f"Failed to fix SQLite permissions: {e}")
+
+        finally:
+            # Cleanup
+            try:
+                logger.info(f"Deleting temporary setup function: {setup_function_name}")
+                self.lambda_client.delete_function(FunctionName=setup_function_name)
+            except Exception as e:
+                logger.warning(f"Failed to delete setup function: {e}")
 
     def _deploy_api_gateway(
         self, function_name: str, api_config: Dict[str, Any]
@@ -827,6 +948,7 @@ class LambdaDeployer:
             return f"https://dry-run-url.lambda-url.{self.region}.on.aws/"
 
         auth_type = url_config.get("auth_type", "NONE")
+        invoke_mode = url_config.get("invoke_mode", "BUFFERED")
         cors_config = url_config.get("cors", {})
 
         logger.info(f"Configuring Function URL for: {function_name}")
@@ -835,6 +957,7 @@ class LambdaDeployer:
         params = {
             "FunctionName": function_name,
             "AuthType": auth_type,
+            "InvokeMode": invoke_mode,
         }
 
         if cors_config.get("enabled", False):

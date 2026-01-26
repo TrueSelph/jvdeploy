@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from jvbundler.config import DeployConfig, DeployConfigError
+from jvdeploy.config import DeployConfig, DeployConfigError
 
 
 def create_test_config(config_dict, temp_dir):

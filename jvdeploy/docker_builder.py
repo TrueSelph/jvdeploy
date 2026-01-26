@@ -94,7 +94,7 @@ class DockerBuilder:
         if not dockerfile_path.exists():
             raise DockerBuilderError(
                 f"Dockerfile not found: {dockerfile_path}\n"
-                f"Tip: Run 'jvbundler generate' to create a Dockerfile first"
+                f"Tip: Run 'jvdeploy generate' to create a Dockerfile first"
             )
 
         full_image_name = f"{self.image_name}:{self.image_tag}"

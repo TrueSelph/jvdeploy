@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from jvbundler import Bundler
+from jvdeploy import Bundler
 
 
 def test_bundler_init(mock_jvagent_app):

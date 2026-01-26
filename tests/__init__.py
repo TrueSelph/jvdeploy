@@ -1,1 +1,1 @@
-"""Tests for jvbundler package."""
+"""Tests for jvdeploy package."""

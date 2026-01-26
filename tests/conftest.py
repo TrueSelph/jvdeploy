@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for jvbundler tests."""
+"""Shared pytest fixtures for jvdeploy tests."""
 
 import tempfile
 from pathlib import Path
