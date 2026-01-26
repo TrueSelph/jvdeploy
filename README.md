@@ -9,8 +9,8 @@ A standalone Dockerfile generator and deployment tool for jvagent applications. 
 - Discovers pip dependencies from all action `info.yaml` files
 - Generates Dockerfiles with separate RUN commands per action for optimal layer caching
 - Extends a customizable base Dockerfile template
-- **NEW**: Deploys applications to AWS Lambda with ECR, IAM, and API Gateway integration
-- **NEW**: Supports Kubernetes deployment (coming soon)
+- Deploys applications to AWS Lambda with ECR, IAM, and API Gateway integration
+- Supports Kubernetes deployment (coming soon)
 
 ## Installation
 
@@ -56,7 +56,7 @@ jvdeploy generate /path/to/my-app
 jvdeploy generate ~/projects/my-jvagent-app
 ```
 
-### Deployment (NEW)
+### Deployment
 
 Deploy jvagent applications to AWS Lambda or Kubernetes:
 
