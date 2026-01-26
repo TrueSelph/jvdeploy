@@ -5,10 +5,9 @@ Handles building Docker images and pushing them to ECR.
 
 import base64
 import logging
-import os
 import subprocess
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +63,7 @@ class DockerBuilder:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def build(
-        self, dockerfile_path: Optional[str] = None, no_cache: bool = False
-    ) -> str:
+    def build(self, dockerfile_path: Optional[str] = None, no_cache: bool = False) -> str:
         """Build Docker image.
 
         Args:
@@ -86,14 +83,15 @@ class DockerBuilder:
             )
 
         # Use default Dockerfile if not specified
+        dockerfile_path_obj: Path
         if dockerfile_path is None:
-            dockerfile_path = self.app_root / "Dockerfile"
+            dockerfile_path_obj = self.app_root / "Dockerfile"
         else:
-            dockerfile_path = Path(dockerfile_path)
+            dockerfile_path_obj = Path(dockerfile_path)
 
-        if not dockerfile_path.exists():
+        if not dockerfile_path_obj.exists():
             raise DockerBuilderError(
-                f"Dockerfile not found: {dockerfile_path}\n"
+                f"Dockerfile not found: {dockerfile_path_obj}\n"
                 f"Tip: Run 'jvdeploy generate' to create a Dockerfile first"
             )
 
@@ -102,7 +100,7 @@ class DockerBuilder:
         logger.info(f"Building Docker image: {full_image_name}")
         logger.info(f"  Platform: {self.platform}")
         logger.info(f"  Context: {self.app_root}")
-        logger.info(f"  Dockerfile: {dockerfile_path}")
+        logger.info(f"  Dockerfile: {dockerfile_path_obj}")
 
         # Build Docker command
         # Use buildx with --load flag to create standard Docker image
@@ -119,7 +117,7 @@ class DockerBuilder:
             "-t",
             full_image_name,
             "-f",
-            str(dockerfile_path),
+            str(dockerfile_path_obj),
         ]
 
         if no_cache:
@@ -139,7 +137,7 @@ class DockerBuilder:
             )
 
             if result.returncode != 0:
-                logger.error(f"Docker build failed:")
+                logger.error("Docker build failed:")
                 logger.error(f"STDOUT: {result.stdout}")
                 logger.error(f"STDERR: {result.stderr}")
                 raise DockerBuilderError(
@@ -213,7 +211,7 @@ class DockerBuilder:
             )
 
             if result.returncode != 0:
-                logger.error(f"Docker push failed:")
+                logger.error("Docker push failed:")
                 logger.error(f"STDOUT: {result.stdout}")
                 logger.error(f"STDERR: {result.stderr}")
                 raise DockerBuilderError(
@@ -247,12 +245,11 @@ class DockerBuilder:
             response = sts_client.get_caller_identity()
             account_id = response["Account"]
             logger.debug(f"Got AWS account ID: {account_id}")
-            return account_id
+            return str(account_id)
 
         except ImportError:
             raise DockerBuilderError(
-                "boto3 is required for AWS operations. "
-                "Install with: pip install boto3"
+                "boto3 is required for AWS operations. " "Install with: pip install boto3"
             )
         except Exception as e:
             raise DockerBuilderError(f"Failed to get AWS account ID: {e}") from e
@@ -309,12 +306,11 @@ class DockerBuilder:
             if result.returncode != 0:
                 raise DockerBuilderError(f"Docker login to ECR failed: {result.stderr}")
 
-            logger.info(f"✓ Successfully authenticated with ECR")
+            logger.info("✓ Successfully authenticated with ECR")
 
         except ImportError:
             raise DockerBuilderError(
-                "boto3 is required for ECR authentication. "
-                "Install with: pip install boto3"
+                "boto3 is required for ECR authentication. " "Install with: pip install boto3"
             )
         except Exception as e:
             raise DockerBuilderError(f"ECR authentication failed: {e}") from e
@@ -360,7 +356,7 @@ class DockerBuilder:
         # Step 4: Push to ECR
         self.push(ecr_uri)
 
-        logger.info(f"=== Successfully built and pushed to ECR ===")
+        logger.info("=== Successfully built and pushed to ECR ===")
         return ecr_uri
 
 

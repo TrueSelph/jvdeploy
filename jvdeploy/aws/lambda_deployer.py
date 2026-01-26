@@ -5,9 +5,8 @@ including ECR image management, IAM roles, Lambda functions, and API Gateway.
 """
 
 import logging
-import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from botocore.exceptions import ClientError
 
@@ -97,9 +96,7 @@ class LambdaDeployer:
             try:
                 import boto3
 
-                self._apigatewayv2_client = boto3.client(
-                    "apigatewayv2", region_name=self.region
-                )
+                self._apigatewayv2_client = boto3.client("apigatewayv2", region_name=self.region)
             except ImportError:
                 raise LambdaDeployerError(
                     "boto3 is required for Lambda deployment. Install with: pip install boto3"
@@ -144,13 +141,13 @@ class LambdaDeployer:
             LambdaDeployerError: If unable to get account ID
         """
         if self.account_id:
-            return self.account_id
+            return str(self.account_id)
 
         try:
             response = self.sts_client.get_caller_identity()
-            self.account_id = response["Account"]
+            self.account_id = str(response["Account"])
             logger.info(f"Auto-detected AWS account ID: {self.account_id}")
-            return self.account_id
+            return str(self.account_id)
         except Exception as e:
             raise LambdaDeployerError(f"Failed to get AWS account ID: {e}") from e
 
@@ -174,7 +171,7 @@ class LambdaDeployer:
         Returns:
             Dictionary with deployment results
         """
-        results = {
+        results: Dict[str, Any] = {
             "success": False,
             "ecr_repository": None,
             "image_uri": image_uri,
@@ -212,13 +209,11 @@ class LambdaDeployer:
                     try:
                         from jvdeploy.docker_builder import DockerBuilder
                     except ImportError as e:
-                        raise LambdaDeployerError(
-                            f"Failed to import docker_builder: {e}"
-                        )
+                        raise LambdaDeployerError(f"Failed to import docker_builder: {e}")
 
                     # Get image config from config
                     image_config = self.config.get("image", {})
-                    app_config = self.config.get("app", {})
+                    # app_config = self.config.get("app", {})
 
                     # Determine app root (parent of config if not in config)
                     app_root = self.config.get("app_root", ".")
@@ -228,9 +223,7 @@ class LambdaDeployer:
                         app_root=app_root,
                         image_name=image_config.get("name", "app"),
                         image_tag=image_config.get("tag", "latest"),
-                        platform=image_config.get("build", {}).get(
-                            "platform", "linux/amd64"
-                        ),
+                        platform=image_config.get("build", {}).get("platform", "linux/amd64"),
                     )
 
                     # Build and push to ECR
@@ -256,9 +249,7 @@ class LambdaDeployer:
                         "Either iam.role_arn or iam.role_name must be provided"
                     )
 
-                role_arn = self._ensure_iam_role(
-                    role_name, iam_config.get("policies", [])
-                )
+                role_arn = self._ensure_iam_role(role_name, iam_config.get("policies", []))
 
             results["iam_role_arn"] = role_arn
 
@@ -295,9 +286,7 @@ class LambdaDeployer:
                 api_config = self.config.get("api_gateway", {})
                 if api_config.get("enabled", False):
                     logger.info("Step 5b: Creating/updating API Gateway...")
-                    api_url = self._deploy_api_gateway(
-                        function_config.get("name"), api_config
-                    )
+                    api_url = self._deploy_api_gateway(function_config.get("name"), api_config)
                     results["api_url"] = api_url
 
             results["success"] = True
@@ -307,7 +296,7 @@ class LambdaDeployer:
 
         except Exception as e:
             logger.error(f"Deployment failed: {e}")
-            results["errors"].append(str(e))
+            cast(List[str], results["errors"]).append(str(e))
             raise LambdaDeployerError(f"Deployment failed: {e}") from e
 
     def _ensure_efs_access_point(
@@ -324,9 +313,7 @@ class LambdaDeployer:
         """
         try:
             if self.dry_run:
-                logger.info(
-                    f"[DRY RUN] Would ensure EFS access point for {file_system_id}"
-                )
+                logger.info(f"[DRY RUN] Would ensure EFS access point for {file_system_id}")
                 return (
                     access_point_arn
                     or f"arn:aws:elasticfilesystem:{self.region}:123456789012:access-point/fsap-1234567890abcdef0"
@@ -346,10 +333,8 @@ class LambdaDeployer:
                         # Check tags for app name
                         tags = {t["Key"]: t["Value"] for t in ap.get("Tags", [])}
                         if tags.get("JvAgentApp") == app_name:
-                            arn = ap["AccessPointArn"]
-                            logger.info(
-                                f"Found existing EFS access point for {app_name}: {arn}"
-                            )
+                            arn = str(ap["AccessPointArn"])
+                            logger.info(f"Found existing EFS access point for {app_name}: {arn}")
                             return arn
             except ClientError as e:
                 if e.response["Error"]["Code"] == "FileSystemNotFound":
@@ -361,9 +346,7 @@ class LambdaDeployer:
                     raise
 
             # None found, create one
-            logger.info(
-                f"Creating new EFS access point for {app_name} on {file_system_id}..."
-            )
+            logger.info(f"Creating new EFS access point for {app_name} on {file_system_id}...")
             response = self.efs_client.create_access_point(
                 FileSystemId=file_system_id,
                 PosixUser={
@@ -389,18 +372,16 @@ class LambdaDeployer:
                     },
                 ],
             )
-            arn = response["AccessPointArn"]
+            arn = str(response["AccessPointArn"])
             access_point_id = response["AccessPointId"]
             logger.info(f"✓ Created EFS access point: {arn}")
 
             # Wait for access point to be available
             logger.info("Waiting for access point to become available...")
             max_retries = 30
-            for i in range(max_retries):
+            for _ in range(max_retries):
                 try:
-                    desc = self.efs_client.describe_access_points(
-                        AccessPointId=access_point_id
-                    )
+                    desc = self.efs_client.describe_access_points(AccessPointId=access_point_id)
                     state = desc["AccessPoints"][0]["LifeCycleState"]
                     if state == "available":
                         logger.info("✓ Access point is available")
@@ -433,12 +414,10 @@ class LambdaDeployer:
             return {"repositoryName": repository_name, "repositoryUri": "dry-run-uri"}
 
         try:
-            response = self.ecr_client.describe_repositories(
-                repositoryNames=[repository_name]
-            )
+            response = self.ecr_client.describe_repositories(repositoryNames=[repository_name])
             repository = response["repositories"][0]
             logger.info(f"ECR repository '{repository_name}' already exists")
-            return repository
+            return dict(repository)
 
         except self.ecr_client.exceptions.RepositoryNotFoundException:
             # Repository doesn't exist, create it
@@ -456,7 +435,7 @@ class LambdaDeployer:
             )
             repository = response["repository"]
             logger.info(f"✓ Created ECR repository: {repository['repositoryUri']}")
-            return repository
+            return dict(repository)
 
     def _ensure_iam_role(self, role_name: str, policies: list) -> str:
         """Ensure IAM role exists with required policies.
@@ -475,15 +454,13 @@ class LambdaDeployer:
         try:
             # Check if role exists
             response = self.iam_client.get_role(RoleName=role_name)
-            role_arn = response["Role"]["Arn"]
+            role_arn = str(response["Role"]["Arn"])
             logger.info(f"IAM role '{role_name}' already exists")
 
             # Ensure policies are attached
             for policy_arn in policies:
                 try:
-                    self.iam_client.attach_role_policy(
-                        RoleName=role_name, PolicyArn=policy_arn
-                    )
+                    self.iam_client.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
                     logger.debug(f"Attached policy {policy_arn} to role {role_name}")
                 except Exception as e:
                     logger.debug(f"Policy {policy_arn} may already be attached: {e}")
@@ -511,14 +488,12 @@ class LambdaDeployer:
                 AssumeRolePolicyDocument=str(trust_policy).replace("'", '"'),
                 Description=f"Role for Lambda function {role_name}",
             )
-            role_arn = response["Role"]["Arn"]
+            role_arn = str(response["Role"]["Arn"])
             logger.info(f"✓ Created IAM role: {role_arn}")
 
             # Attach policies
             for policy_arn in policies:
-                self.iam_client.attach_role_policy(
-                    RoleName=role_name, PolicyArn=policy_arn
-                )
+                self.iam_client.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
                 logger.info(f"✓ Attached policy: {policy_arn}")
 
             # Wait for role to propagate
@@ -537,21 +512,17 @@ class LambdaDeployer:
             VPC configuration dictionary with SubnetIds and SecurityGroupIds
         """
         try:
-            logger.info(
-                f"Auto-detecting VPC configuration from EFS {file_system_id}..."
-            )
+            logger.info(f"Auto-detecting VPC configuration from EFS {file_system_id}...")
 
             # Get mount targets
-            mount_targets = self.efs_client.describe_mount_targets(
-                FileSystemId=file_system_id
-            )["MountTargets"]
+            mount_targets = self.efs_client.describe_mount_targets(FileSystemId=file_system_id)[
+                "MountTargets"
+            ]
 
             if not mount_targets:
-                raise LambdaDeployerError(
-                    f"No mount targets found for EFS {file_system_id}"
-                )
+                raise LambdaDeployerError(f"No mount targets found for EFS {file_system_id}")
 
-            subnet_ids = list(set(mt["SubnetId"] for mt in mount_targets))
+            subnet_ids = list({mt["SubnetId"] for mt in mount_targets})
             security_group_ids = set()
 
             # Get security groups from mount targets
@@ -572,9 +543,7 @@ class LambdaDeployer:
             return vpc_config
 
         except Exception as e:
-            raise LambdaDeployerError(
-                f"Failed to auto-detect VPC config from EFS: {e}"
-            ) from e
+            raise LambdaDeployerError(f"Failed to auto-detect VPC config from EFS: {e}") from e
 
     def _build_lambda_config(
         self, image_uri: str, role_arn: str, function_config: Dict[str, Any]
@@ -623,9 +592,7 @@ class LambdaDeployer:
         if efs_config.get("enabled", False):
             file_system_id = efs_config.get("file_system_id")
             if not file_system_id:
-                raise LambdaDeployerError(
-                    "efs.file_system_id is required when EFS is enabled"
-                )
+                raise LambdaDeployerError("efs.file_system_id is required when EFS is enabled")
 
             access_point_arn = self._ensure_efs_access_point(
                 file_system_id, efs_config.get("access_point_arn")
@@ -640,9 +607,7 @@ class LambdaDeployer:
 
             # EFS requires VPC, so if not configured, try to auto-detect from EFS
             if "VpcConfig" not in config:
-                logger.info(
-                    "EFS enabled but VPC not configured. Auto-detecting from EFS..."
-                )
+                logger.info("EFS enabled but VPC not configured. Auto-detecting from EFS...")
                 config["VpcConfig"] = self._get_efs_vpc_config(file_system_id)
 
         return config
@@ -680,9 +645,7 @@ class LambdaDeployer:
             logger.info(f"Updating Lambda function: {function_name}")
 
             # Update function code
-            self.lambda_client.update_function_code(
-                FunctionName=function_name, ImageUri=image_uri
-            )
+            self.lambda_client.update_function_code(FunctionName=function_name, ImageUri=image_uri)
 
             # Wait for update to complete
             logger.info("Waiting for function code update to complete...")
@@ -691,9 +654,7 @@ class LambdaDeployer:
 
             # Update function configuration
             update_config = {
-                k: v
-                for k, v in config.items()
-                if k not in ["FunctionName", "Code", "PackageType"]
+                k: v for k, v in config.items() if k not in ["FunctionName", "Code", "PackageType"]
             }
             self.lambda_client.update_function_configuration(
                 FunctionName=function_name, **update_config
@@ -704,7 +665,7 @@ class LambdaDeployer:
             waiter.wait(FunctionName=function_name)
 
             response = self.lambda_client.get_function(FunctionName=function_name)
-            function_arn = response["Configuration"]["FunctionArn"]
+            function_arn = str(response["Configuration"]["FunctionArn"])
             logger.info(f"✓ Updated Lambda function: {function_arn}")
 
             return function_arn
@@ -714,7 +675,7 @@ class LambdaDeployer:
             logger.info(f"Creating Lambda function: {function_name}")
 
             response = self.lambda_client.create_function(**config)
-            function_arn = response["FunctionArn"]
+            function_arn = str(response["FunctionArn"])
 
             # Wait for function to be active
             logger.info("Waiting for function to become active...")
@@ -756,9 +717,7 @@ class LambdaDeployer:
 
         try:
             # Build config for setup function
-            setup_config = self._build_lambda_config(
-                image_uri, role_arn, function_config
-            )
+            setup_config = self._build_lambda_config(image_uri, role_arn, function_config)
             setup_config["FunctionName"] = setup_function_name
 
             # Override command to fix permissions and satisfy Lambda Adapter
@@ -819,9 +778,7 @@ class LambdaDeployer:
             except Exception as e:
                 logger.warning(f"Failed to delete setup function: {e}")
 
-    def _deploy_api_gateway(
-        self, function_name: str, api_config: Dict[str, Any]
-    ) -> str:
+    def _deploy_api_gateway(self, function_name: str, api_config: Dict[str, Any]) -> str:
         """Create or update API Gateway.
 
         Args:
@@ -836,9 +793,7 @@ class LambdaDeployer:
         if api_type == "HTTP":
             return self._deploy_http_api(function_name, api_config)
         else:
-            raise LambdaDeployerError(
-                f"API Gateway type '{api_type}' not yet supported"
-            )
+            raise LambdaDeployerError(f"API Gateway type '{api_type}' not yet supported")
 
     def _deploy_http_api(self, function_name: str, api_config: Dict[str, Any]) -> str:
         """Create or update HTTP API (API Gateway v2).
@@ -888,7 +843,7 @@ class LambdaDeployer:
                 }
 
             response = self.apigatewayv2_client.create_api(**create_params)
-            api_id = response["ApiId"]
+            api_id = str(response["ApiId"])
             logger.info(f"✓ Created HTTP API: {api_id}")
 
         # Get the API endpoint
@@ -896,9 +851,7 @@ class LambdaDeployer:
         if stage_name == "$default":
             api_url = f"https://{api_id}.execute-api.{self.region}.amazonaws.com"
         else:
-            api_url = (
-                f"https://{api_id}.execute-api.{self.region}.amazonaws.com/{stage_name}"
-            )
+            api_url = f"https://{api_id}.execute-api.{self.region}.amazonaws.com/{stage_name}"
 
         # Ensure Lambda permission exists
         self._add_api_gateway_permission(function_name, api_id)
@@ -931,9 +884,7 @@ class LambdaDeployer:
         except Exception as e:
             logger.warning(f"Failed to add API Gateway permission: {e}")
 
-    def _deploy_function_url(
-        self, function_name: str, url_config: Dict[str, Any]
-    ) -> str:
+    def _deploy_function_url(self, function_name: str, url_config: Dict[str, Any]) -> str:
         """Create or update Lambda Function URL.
 
         Args:
@@ -972,7 +923,7 @@ class LambdaDeployer:
         try:
             # Try to create function URL
             response = self.lambda_client.create_function_url_config(**params)
-            function_url = response["FunctionUrl"]
+            function_url = str(response["FunctionUrl"])
             logger.info(f"✓ Created Function URL: {function_url}")
 
         except self.lambda_client.exceptions.ResourceConflictException:
@@ -1016,9 +967,7 @@ class LambdaDeployer:
             # Permission already exists
             logger.debug("Public access permission already exists")
 
-    def get_function_status(
-        self, function_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_function_status(self, function_name: Optional[str] = None) -> Dict[str, Any]:
         """Get Lambda function status.
 
         Args:
@@ -1077,7 +1026,7 @@ class LambdaDeployer:
         if not function_name:
             raise LambdaDeployerError("Function name is required")
 
-        results = {"deleted": [], "errors": []}
+        results: Dict[str, Any] = {"deleted": [], "errors": []}
 
         if self.dry_run:
             logger.info(f"[DRY RUN] Would delete Lambda function: {function_name}")
@@ -1097,14 +1046,12 @@ class LambdaDeployer:
         except Exception as e:
             error = f"Failed to delete function: {e}"
             logger.error(error)
-            results["errors"].append(error)
+            cast(List[str], results["errors"]).append(error)
 
         # Delete API Gateway if requested
         if delete_api:
             try:
-                api_name = self.config.get("api_gateway", {}).get(
-                    "name", f"{function_name}-api"
-                )
+                api_name = self.config.get("api_gateway", {}).get("name", f"{function_name}-api")
                 response = self.apigatewayv2_client.get_apis()
                 for api in response.get("Items", []):
                     if api["Name"] == api_name:
@@ -1115,7 +1062,7 @@ class LambdaDeployer:
             except Exception as e:
                 error = f"Failed to delete API Gateway: {e}"
                 logger.error(error)
-                results["errors"].append(error)
+                cast(List[str], results["errors"]).append(error)
 
         # Delete IAM role if requested
         if delete_role:
@@ -1123,9 +1070,7 @@ class LambdaDeployer:
                 role_name = self.config.get("iam", {}).get("role_name")
                 if role_name:
                     # Detach policies first
-                    response = self.iam_client.list_attached_role_policies(
-                        RoleName=role_name
-                    )
+                    response = self.iam_client.list_attached_role_policies(RoleName=role_name)
                     for policy in response.get("AttachedPolicies", []):
                         self.iam_client.detach_role_policy(
                             RoleName=role_name, PolicyArn=policy["PolicyArn"]
@@ -1138,6 +1083,6 @@ class LambdaDeployer:
             except Exception as e:
                 error = f"Failed to delete IAM role: {e}"
                 logger.error(error)
-                results["errors"].append(error)
+                cast(List[str], results["errors"]).append(error)
 
         return results

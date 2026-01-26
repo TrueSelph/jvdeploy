@@ -1,15 +1,21 @@
 """Tests for CLI module."""
 
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
 
-from jvdeploy.cli import handle_generate, handle_init, main
+from jvdeploy.cli import main
+
+if TYPE_CHECKING:
+    from pathlib import Path  # nopragma: F401
+
+    from _pytest.capture import CaptureFixture
+    from pytest import MonkeyPatch
 
 
-def test_main_help_flag(monkeypatch, capsys):
+def test_main_help_flag(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test main function with help flag."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "--help"])
 
@@ -24,7 +30,7 @@ def test_main_help_flag(monkeypatch, capsys):
     assert "deploy" in captured.out.lower()
 
 
-def test_main_version_flag(monkeypatch, capsys):
+def test_main_version_flag(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test main function with version flag."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "--version"])
 
@@ -37,7 +43,7 @@ def test_main_version_flag(monkeypatch, capsys):
     assert "0.1.0" in captured.out
 
 
-def test_main_no_command(monkeypatch, capsys):
+def test_main_no_command(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test main function with no command shows help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy"])
 
@@ -50,7 +56,9 @@ def test_main_no_command(monkeypatch, capsys):
     assert "usage:" in captured.out.lower()
 
 
-def test_generate_command_success(mock_jvagent_app, monkeypatch, capsys):
+def test_generate_command_success(
+    mock_jvagent_app: "Path", monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]"
+) -> None:
     """Test generate command with successful execution."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
@@ -67,7 +75,9 @@ def test_generate_command_success(mock_jvagent_app, monkeypatch, capsys):
     assert "Dockerfile generated successfully" in captured.out
 
 
-def test_generate_command_current_directory(mock_jvagent_app, monkeypatch, capsys):
+def test_generate_command_current_directory(
+    mock_jvagent_app: "Path", monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]"
+) -> None:
     """Test generate command in current directory."""
     monkeypatch.chdir(mock_jvagent_app)
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate"])
@@ -82,7 +92,9 @@ def test_generate_command_current_directory(mock_jvagent_app, monkeypatch, capsy
     assert dockerfile_path.exists()
 
 
-def test_generate_command_invalid_path(monkeypatch, capsys):
+def test_generate_command_invalid_path(
+    monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]"
+) -> None:
     """Test generate command with invalid path."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", "/invalid/path"])
 
@@ -92,7 +104,7 @@ def test_generate_command_invalid_path(monkeypatch, capsys):
     assert exc_info.value.code == 1
 
 
-def test_generate_command_missing_app_yaml(temp_dir, monkeypatch):
+def test_generate_command_missing_app_yaml(temp_dir: "Path", monkeypatch: "MonkeyPatch") -> None:
     """Test generate command fails with missing app.yaml."""
     app_root = temp_dir / "invalid_app"
     app_root.mkdir()
@@ -105,7 +117,7 @@ def test_generate_command_missing_app_yaml(temp_dir, monkeypatch):
     assert exc_info.value.code == 1
 
 
-def test_init_command_help(monkeypatch, capsys):
+def test_init_command_help(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test init command help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "init", "--help"])
 
@@ -120,7 +132,7 @@ def test_init_command_help(monkeypatch, capsys):
     assert "--kubernetes" in captured.out.lower()
 
 
-def test_deploy_command_help(monkeypatch, capsys):
+def test_deploy_command_help(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test deploy command help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "deploy", "--help"])
 
@@ -134,7 +146,7 @@ def test_deploy_command_help(monkeypatch, capsys):
     assert "lambda" in captured.out.lower()
 
 
-def test_deploy_lambda_help(monkeypatch, capsys):
+def test_deploy_lambda_help(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test deploy lambda command help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "deploy", "lambda", "--help"])
 
@@ -149,7 +161,7 @@ def test_deploy_lambda_help(monkeypatch, capsys):
     assert "--dry-run" in captured.out.lower()
 
 
-def test_status_command_help(monkeypatch, capsys):
+def test_status_command_help(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test status command help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "status", "--help"])
 
@@ -162,7 +174,7 @@ def test_status_command_help(monkeypatch, capsys):
     assert "status" in captured.out.lower()
 
 
-def test_logs_command_help(monkeypatch, capsys):
+def test_logs_command_help(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test logs command help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "logs", "--help"])
 
@@ -175,7 +187,7 @@ def test_logs_command_help(monkeypatch, capsys):
     assert "logs" in captured.out.lower()
 
 
-def test_destroy_command_help(monkeypatch, capsys):
+def test_destroy_command_help(monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]") -> None:
     """Test destroy command help."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "destroy", "--help"])
 
@@ -188,11 +200,11 @@ def test_destroy_command_help(monkeypatch, capsys):
     assert "destroy" in captured.out.lower()
 
 
-def test_debug_flag(mock_jvagent_app, monkeypatch, capsys):
+def test_debug_flag(
+    mock_jvagent_app: "Path", monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]"
+) -> None:
     """Test debug flag enables debug logging."""
-    monkeypatch.setattr(
-        sys, "argv", ["jvdeploy", "--debug", "generate", str(mock_jvagent_app)]
-    )
+    monkeypatch.setattr(sys, "argv", ["jvdeploy", "--debug", "generate", str(mock_jvagent_app)])
 
     with pytest.raises(SystemExit) as exc_info:
         main()
@@ -200,7 +212,9 @@ def test_debug_flag(mock_jvagent_app, monkeypatch, capsys):
     assert exc_info.value.code == 0
 
 
-def test_main_keyboard_interrupt(mock_jvagent_app, monkeypatch, capsys):
+def test_main_keyboard_interrupt(
+    mock_jvagent_app: "Path", monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]"
+) -> None:
     """Test main function handles keyboard interrupt gracefully."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
@@ -218,7 +232,7 @@ def test_main_keyboard_interrupt(mock_jvagent_app, monkeypatch, capsys):
         assert "cancelled by user" in captured.out
 
 
-def test_main_unexpected_exception(mock_jvagent_app, monkeypatch):
+def test_main_unexpected_exception(mock_jvagent_app: "Path", monkeypatch: "MonkeyPatch") -> None:
     """Test main function handles unexpected exceptions."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 
@@ -233,7 +247,7 @@ def test_main_unexpected_exception(mock_jvagent_app, monkeypatch):
         assert exc_info.value.code == 1
 
 
-def test_bundler_generation_fails(mock_jvagent_app, monkeypatch):
+def test_bundler_generation_fails(mock_jvagent_app: "Path", monkeypatch: "MonkeyPatch") -> None:
     """Test when bundler generation fails."""
     monkeypatch.setattr(sys, "argv", ["jvdeploy", "generate", str(mock_jvagent_app)])
 

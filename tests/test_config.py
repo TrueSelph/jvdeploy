@@ -3,6 +3,7 @@
 import os
 import tempfile
 from pathlib import Path
+from typing import Any, Dict
 
 import pytest
 import yaml
@@ -10,7 +11,7 @@ import yaml
 from jvdeploy.config import DeployConfig, DeployConfigError
 
 
-def create_test_config(config_dict, temp_dir):
+def create_test_config(config_dict: Dict[str, Any], temp_dir: str) -> str:
     """Helper to create a temporary config file."""
     config_path = Path(temp_dir) / "deploy.yaml"
     with open(config_path, "w") as f:
@@ -18,7 +19,7 @@ def create_test_config(config_dict, temp_dir):
     return str(config_path)
 
 
-def test_load_valid_config():
+def test_load_valid_config() -> None:
     """Test loading a valid configuration."""
     config_dict = {
         "version": "1.0",
@@ -45,13 +46,13 @@ def test_load_valid_config():
         assert config.is_lambda_enabled() is True
 
 
-def test_missing_config_file():
+def test_missing_config_file() -> None:
     """Test error when config file doesn't exist."""
     with pytest.raises(DeployConfigError, match="Configuration file not found"):
         DeployConfig("/nonexistent/deploy.yaml")
 
 
-def test_missing_required_fields():
+def test_missing_required_fields() -> None:
     """Test error when required fields are missing."""
     config_dict = {
         "version": "1.0",
@@ -65,9 +66,9 @@ def test_missing_required_fields():
             DeployConfig(config_path)
 
 
-def test_env_var_interpolation():
+def test_env_var_interpolation() -> None:
     """Test environment variable interpolation."""
-    os.environ["TEST_PASSWORD"] = "secret123"
+    os.environ["TEST_PASSWORD"] = "secret123"  # pragma: allowlist secret
     os.environ["TEST_LEVEL"] = "DEBUG"
 
     config_dict = {
@@ -88,7 +89,8 @@ def test_env_var_interpolation():
         config = DeployConfig(config_path)
 
         lambda_config = config.get_lambda_config()
-        assert lambda_config["environment"]["PASSWORD"] == "secret123"
+        assert lambda_config is not None
+        assert lambda_config["environment"]["PASSWORD"] == "secret123"  # pragma: allowlist secret
         assert lambda_config["environment"]["LOG_LEVEL"] == "DEBUG"
 
     # Cleanup
@@ -96,7 +98,7 @@ def test_env_var_interpolation():
     del os.environ["TEST_LEVEL"]
 
 
-def test_template_variable_resolution():
+def test_template_variable_resolution() -> None:
     """Test template variable resolution."""
     config_dict = {
         "version": "1.0",
@@ -125,10 +127,11 @@ def test_template_variable_resolution():
         assert image_config["tag"] == "2.0.0"
 
         lambda_config = config.get_lambda_config()
+        assert lambda_config is not None
         assert lambda_config["function"]["name"] == "my-app-function"
 
 
-def test_get_full_image_name():
+def test_get_full_image_name() -> None:
     """Test getting full image name with tag."""
     config_dict = {
         "version": "1.0",
@@ -147,7 +150,7 @@ def test_get_full_image_name():
         assert config.get_full_image_name() == "myorg/test-app:1.2.3"
 
 
-def test_get_ecr_image_uri():
+def test_get_ecr_image_uri() -> None:
     """Test getting ECR image URI."""
     config_dict = {
         "version": "1.0",
@@ -174,7 +177,7 @@ def test_get_ecr_image_uri():
         assert config.get_ecr_image_uri() == expected
 
 
-def test_override_env_vars():
+def test_override_env_vars() -> None:
     """Test overriding environment variables."""
     config_dict = {
         "version": "1.0",
@@ -196,11 +199,12 @@ def test_override_env_vars():
         config.override_env_vars(["LOG_LEVEL=DEBUG", "DEBUG=true"])
 
         lambda_config = config.get_lambda_config()
+        assert lambda_config is not None
         assert lambda_config["environment"]["LOG_LEVEL"] == "DEBUG"
         assert lambda_config["environment"]["DEBUG"] == "true"
 
 
-def test_lambda_enabled():
+def test_lambda_enabled() -> None:
     """Test checking if Lambda is enabled."""
     config_dict = {
         "version": "1.0",
@@ -222,7 +226,7 @@ def test_lambda_enabled():
         assert config.is_k8s_enabled() is False
 
 
-def test_k8s_enabled():
+def test_k8s_enabled() -> None:
     """Test checking if Kubernetes is enabled."""
     config_dict = {
         "version": "1.0",
@@ -244,7 +248,7 @@ def test_k8s_enabled():
         assert config.is_k8s_enabled() is True
 
 
-def test_no_platform_enabled():
+def test_no_platform_enabled() -> None:
     """Test error when no platform is enabled."""
     config_dict = {
         "version": "1.0",
@@ -267,7 +271,7 @@ def test_no_platform_enabled():
             DeployConfig(config_path)
 
 
-def test_invalid_yaml():
+def test_invalid_yaml() -> None:
     """Test error with invalid YAML."""
     with tempfile.TemporaryDirectory() as temp_dir:
         config_path = Path(temp_dir) / "deploy.yaml"
@@ -278,7 +282,7 @@ def test_invalid_yaml():
             DeployConfig(str(config_path))
 
 
-def test_get_lambda_config_when_disabled():
+def test_get_lambda_config_when_disabled() -> None:
     """Test getting Lambda config when disabled returns None."""
     config_dict = {
         "version": "1.0",
@@ -299,7 +303,7 @@ def test_get_lambda_config_when_disabled():
         assert config.get_lambda_config() is None
 
 
-def test_to_dict():
+def test_to_dict() -> None:
     """Test getting full configuration as dictionary."""
     config_dict = {
         "version": "1.0",

@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -189,7 +189,7 @@ class DeployConfig:
         Returns:
             Dictionary containing app configuration
         """
-        return self.config.get("app", {})
+        return dict(self.config.get("app", {}))
 
     def get_image_config(self) -> Dict[str, Any]:
         """Get Docker image configuration section.
@@ -197,7 +197,7 @@ class DeployConfig:
         Returns:
             Dictionary containing image configuration
         """
-        return self.config.get("image", {})
+        return dict(self.config.get("image", {}))
 
     def get_lambda_config(self) -> Optional[Dict[str, Any]]:
         """Get Lambda deployment configuration.
@@ -208,7 +208,7 @@ class DeployConfig:
         lambda_config = self.config.get("lambda", {})
         if not lambda_config.get("enabled", False):
             return None
-        return lambda_config
+        return dict(lambda_config)
 
     def get_k8s_config(self) -> Optional[Dict[str, Any]]:
         """Get Kubernetes deployment configuration.
@@ -219,7 +219,7 @@ class DeployConfig:
         k8s_config = self.config.get("kubernetes", {})
         if not k8s_config.get("enabled", False):
             return None
-        return k8s_config
+        return dict(k8s_config)
 
     def is_lambda_enabled(self) -> bool:
         """Check if Lambda deployment is enabled.
@@ -227,7 +227,7 @@ class DeployConfig:
         Returns:
             True if Lambda deployment is enabled
         """
-        return self.config.get("lambda", {}).get("enabled", False)
+        return bool(self.config.get("lambda", {}).get("enabled", False))
 
     def is_k8s_enabled(self) -> bool:
         """Check if Kubernetes deployment is enabled.
@@ -235,9 +235,9 @@ class DeployConfig:
         Returns:
             True if Kubernetes deployment is enabled
         """
-        return self.config.get("kubernetes", {}).get("enabled", False)
+        return bool(self.config.get("kubernetes", {}).get("enabled", False))
 
-    def override_env_vars(self, env_overrides: Optional[list[str]]) -> None:
+    def override_env_vars(self, env_overrides: Optional[List[str]]) -> None:
         """Override environment variables in configuration.
 
         Args:
@@ -305,9 +305,7 @@ class DeployConfig:
         # If still no account_id, return a placeholder that will be filled in later
         if not account_id:
             account_id = "{ACCOUNT_ID}"
-            logger.warning(
-                "account_id not set, will be auto-detected from AWS credentials"
-            )
+            logger.warning("account_id not set, will be auto-detected from AWS credentials")
 
         ecr_config = lambda_config.get("ecr", {})
         repo_name = ecr_config.get("repository_name", self.get_app_config().get("name"))
@@ -324,9 +322,7 @@ class DeployConfig:
         return self.config.copy()
 
 
-def load_config(
-    config_path: str = "deploy.yaml", app_root: Optional[str] = None
-) -> DeployConfig:
+def load_config(config_path: str = "deploy.yaml", app_root: Optional[str] = None) -> DeployConfig:
     """Load deployment configuration from file.
 
     Args:

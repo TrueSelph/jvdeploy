@@ -1,8 +1,7 @@
 """Tests for dockerfile_generator module."""
 
-from pathlib import Path
-
 import pytest
+
 from jvdeploy.dockerfile_generator import (
     discover_action_dependencies,
     generate_dockerfile,
@@ -48,9 +47,7 @@ def test_discover_action_dependencies_invalid_yaml(temp_dir):
     app_yaml.write_text("name: test_app\n")
 
     # Create action with invalid YAML
-    action_path = (
-        app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
-    )
+    action_path = app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
     action_path.mkdir(parents=True)
     action_info = action_path / "info.yaml"
     action_info.write_text("invalid: yaml: content: [")
@@ -71,9 +68,7 @@ def test_discover_action_dependencies_missing_package_section(temp_dir):
     app_yaml.write_text("name: test_app\n")
 
     # Create action without package section
-    action_path = (
-        app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
-    )
+    action_path = app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
     action_path.mkdir(parents=True)
     action_info = action_path / "info.yaml"
     action_info.write_text("name: test\n")
@@ -93,9 +88,7 @@ def test_discover_action_dependencies_empty_pip_list(temp_dir):
     app_yaml.write_text("name: test_app\n")
 
     # Create action with empty pip list
-    action_path = (
-        app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
-    )
+    action_path = app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
     action_path.mkdir(parents=True)
     action_info = action_path / "info.yaml"
     action_info.write_text(
@@ -128,10 +121,7 @@ def test_generate_dockerfile_run_commands_single_action():
 
     assert "# Action-specific pip dependencies" in commands
     assert "# Dependencies for myorg/action1" in commands
-    assert (
-        "RUN /opt/venv/bin/pip install --no-cache-dir openai>=1.0.0 httpx>=0.24.0"
-        in commands
-    )
+    assert "RUN /opt/venv/bin/pip install --no-cache-dir openai>=1.0.0 httpx>=0.24.0" in commands
 
 
 def test_generate_dockerfile_run_commands_multiple_actions():
@@ -148,13 +138,9 @@ def test_generate_dockerfile_run_commands_multiple_actions():
     assert "# Dependencies for myorg/action1" in commands
     assert "# Dependencies for myorg/action2" in commands
     assert "# Dependencies for other/action3" in commands
+    assert "RUN /opt/venv/bin/pip install --no-cache-dir openai>=1.0.0 httpx>=0.24.0" in commands
     assert (
-        "RUN /opt/venv/bin/pip install --no-cache-dir openai>=1.0.0 httpx>=0.24.0"
-        in commands
-    )
-    assert (
-        "RUN /opt/venv/bin/pip install --no-cache-dir requests>=2.31.0 pydantic>=2.0.0"
-        in commands
+        "RUN /opt/venv/bin/pip install --no-cache-dir requests>=2.31.0 pydantic>=2.0.0" in commands
     )
     assert "RUN /opt/venv/bin/pip install --no-cache-dir numpy>=1.24.0" in commands
 
@@ -214,22 +200,15 @@ def test_generate_dockerfile_with_dependencies(mock_jvagent_app, mock_base_templ
         "RUN /opt/venv/bin/pip install --no-cache-dir requests>=2.31.0 pydantic>=2.0.0"
         in dockerfile_content
     )
-    assert (
-        "RUN /opt/venv/bin/pip install --no-cache-dir numpy>=1.24.0"
-        in dockerfile_content
-    )
+    assert "RUN /opt/venv/bin/pip install --no-cache-dir numpy>=1.24.0" in dockerfile_content
 
     # Check placeholder is replaced
     assert "{{ACTION_DEPENDENCIES}}" not in dockerfile_content
 
 
-def test_generate_dockerfile_no_dependencies(
-    mock_app_no_dependencies, mock_base_template
-):
+def test_generate_dockerfile_no_dependencies(mock_app_no_dependencies, mock_base_template):
     """Test generating Dockerfile with no action dependencies."""
-    dockerfile_content = generate_dockerfile(
-        mock_app_no_dependencies, mock_base_template
-    )
+    dockerfile_content = generate_dockerfile(mock_app_no_dependencies, mock_base_template)
 
     # Check base template content is present
     assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
@@ -278,9 +257,7 @@ def test_generate_dockerfile_version_specifiers(temp_dir, mock_base_template):
     app_yaml.write_text("name: test_app\n")
 
     # Create action with various version specifiers
-    action_path = (
-        app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
-    )
+    action_path = app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
     action_path.mkdir(parents=True)
     action_info = action_path / "info.yaml"
     action_info.write_text(
@@ -314,9 +291,7 @@ def test_generate_dockerfile_whitespace_handling(temp_dir, mock_base_template):
     app_yaml.write_text("name: test_app\n")
 
     # Create action with whitespace in dependencies
-    action_path = (
-        app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
-    )
+    action_path = app_root / "agents" / "myorg" / "agent1" / "actions" / "myorg" / "action1"
     action_path.mkdir(parents=True)
     action_info = action_path / "info.yaml"
     action_info.write_text(

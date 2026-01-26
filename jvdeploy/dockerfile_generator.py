@@ -37,7 +37,7 @@ def discover_action_dependencies(app_root: Path) -> Dict[str, List[str]]:
         if not namespace_dir.is_dir():
             continue
 
-        namespace = namespace_dir.name
+        # namespace = namespace_dir.name
 
         # Iterate through agent directories
         for agent_dir in namespace_dir.iterdir():
@@ -88,9 +88,7 @@ def discover_action_dependencies(app_root: Path) -> Dict[str, List[str]]:
                             continue
 
                         # Filter out empty strings and normalize
-                        pip_deps = [
-                            dep.strip() for dep in pip_deps if dep and dep.strip()
-                        ]
+                        pip_deps = [dep.strip() for dep in pip_deps if dep and dep.strip()]
 
                         if pip_deps:
                             # Use action name from package.name or construct from path
@@ -134,18 +132,14 @@ def generate_dockerfile_run_commands(dependencies: Dict[str, List[str]]) -> str:
         unique_deps = []
         for dep in deps:
             # Extract package name for comparison (handle version specifiers)
-            pkg_name = (
-                dep.split(">=")[0].split("==")[0].split("<")[0].split("~")[0].strip()
-            )
+            pkg_name = dep.split(">=")[0].split("==")[0].split("<")[0].split("~")[0].strip()
             if pkg_name not in seen:
                 seen.add(pkg_name)
                 unique_deps.append(dep)
 
         if unique_deps:
             commands.append(f"# Dependencies for {action_name}")
-            commands.append(
-                f'RUN /opt/venv/bin/pip install --no-cache-dir {" ".join(unique_deps)}'
-            )
+            commands.append(f'RUN /opt/venv/bin/pip install --no-cache-dir {" ".join(unique_deps)}')
 
     return "\n".join(commands)
 
@@ -165,9 +159,7 @@ def generate_dockerfile(app_root: Path, base_template_path: Path) -> str:
     """
     # Load base template
     if not base_template_path.exists():
-        raise FileNotFoundError(
-            f"Base Dockerfile template not found: {base_template_path}"
-        )
+        raise FileNotFoundError(f"Base Dockerfile template not found: {base_template_path}")
 
     with open(base_template_path, "r", encoding="utf-8") as f:
         base_template = f.read()
@@ -184,9 +176,7 @@ def generate_dockerfile(app_root: Path, base_template_path: Path) -> str:
         # The placeholder is: "# {{ACTION_DEPENDENCIES}}" on its own line
         placeholder = "# {{ACTION_DEPENDENCIES}}"
         # Replace the placeholder line (with newline) with the actual commands
-        dockerfile_content = base_template.replace(
-            f"{placeholder}\n", f"{run_commands}\n"
-        )
+        dockerfile_content = base_template.replace(f"{placeholder}\n", f"{run_commands}\n")
         # If replacement didn't work (no newline after placeholder), try without newline
         if placeholder in dockerfile_content:
             dockerfile_content = dockerfile_content.replace(placeholder, run_commands)

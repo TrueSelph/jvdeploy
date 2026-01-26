@@ -1,13 +1,12 @@
 """Tests for Bundler class."""
 
 from pathlib import Path
-
-import pytest
+from typing import Any
 
 from jvdeploy import Bundler
 
 
-def test_bundler_init(mock_jvagent_app):
+def test_bundler_init(mock_jvagent_app: Path) -> None:
     """Test Bundler initialization."""
     bundler = Bundler(app_root=str(mock_jvagent_app))
 
@@ -15,7 +14,7 @@ def test_bundler_init(mock_jvagent_app):
     assert isinstance(bundler.app_root, Path)
 
 
-def test_bundler_init_relative_path(mock_jvagent_app, monkeypatch):
+def test_bundler_init_relative_path(mock_jvagent_app: Path, monkeypatch: Any) -> None:
     """Test Bundler initialization with relative path."""
     # Change to parent directory
     monkeypatch.chdir(mock_jvagent_app.parent)
@@ -25,14 +24,14 @@ def test_bundler_init_relative_path(mock_jvagent_app, monkeypatch):
     assert bundler.app_root.resolve() == mock_jvagent_app.resolve()
 
 
-def test_bundler_validate_app_success(mock_jvagent_app):
+def test_bundler_validate_app_success(mock_jvagent_app: Path) -> None:
     """Test app validation with valid app.yaml."""
     bundler = Bundler(app_root=str(mock_jvagent_app))
 
     assert bundler._validate_app() is True
 
 
-def test_bundler_validate_app_missing_app_yaml(temp_dir):
+def test_bundler_validate_app_missing_app_yaml(temp_dir: Path) -> None:
     """Test app validation with missing app.yaml."""
     app_root = temp_dir / "invalid_app"
     app_root.mkdir()
@@ -42,7 +41,7 @@ def test_bundler_validate_app_missing_app_yaml(temp_dir):
     assert bundler._validate_app() is False
 
 
-def test_bundler_generate_dockerfile_success(mock_jvagent_app):
+def test_bundler_generate_dockerfile_success(mock_jvagent_app: Path) -> None:
     """Test successful Dockerfile generation."""
     bundler = Bundler(app_root=str(mock_jvagent_app))
 
@@ -63,7 +62,9 @@ def test_bundler_generate_dockerfile_success(mock_jvagent_app):
     assert "other/action3" in dockerfile_content
 
 
-def test_bundler_generate_dockerfile_no_dependencies(mock_app_no_dependencies):
+def test_bundler_generate_dockerfile_no_dependencies(
+    mock_app_no_dependencies: Path,
+) -> None:
     """Test Dockerfile generation with no action dependencies."""
     bundler = Bundler(app_root=str(mock_app_no_dependencies))
 
@@ -81,7 +82,7 @@ def test_bundler_generate_dockerfile_no_dependencies(mock_app_no_dependencies):
     assert "# Action-specific pip dependencies" not in dockerfile_content
 
 
-def test_bundler_generate_dockerfile_no_agents(mock_app_no_agents):
+def test_bundler_generate_dockerfile_no_agents(mock_app_no_agents: Path) -> None:
     """Test Dockerfile generation with no agents directory."""
     bundler = Bundler(app_root=str(mock_app_no_agents))
 
@@ -98,7 +99,7 @@ def test_bundler_generate_dockerfile_no_agents(mock_app_no_agents):
     assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
 
 
-def test_bundler_generate_dockerfile_missing_app_yaml(temp_dir):
+def test_bundler_generate_dockerfile_missing_app_yaml(temp_dir: Path) -> None:
     """Test Dockerfile generation fails with missing app.yaml."""
     app_root = temp_dir / "invalid_app"
     app_root.mkdir()
@@ -114,7 +115,9 @@ def test_bundler_generate_dockerfile_missing_app_yaml(temp_dir):
     assert not dockerfile_path.exists()
 
 
-def test_bundler_generate_dockerfile_overwrites_existing(mock_jvagent_app):
+def test_bundler_generate_dockerfile_overwrites_existing(
+    mock_jvagent_app: Path,
+) -> None:
     """Test that Dockerfile generation overwrites existing Dockerfile."""
     bundler = Bundler(app_root=str(mock_jvagent_app))
 
@@ -133,15 +136,15 @@ def test_bundler_generate_dockerfile_overwrites_existing(mock_jvagent_app):
 
 
 def test_bundler_generate_dockerfile_missing_base_template(
-    mock_jvagent_app, monkeypatch
-):
+    mock_jvagent_app: Path, monkeypatch: Any
+) -> None:
     """Test Dockerfile generation fails with missing base template."""
     bundler = Bundler(app_root=str(mock_jvagent_app))
 
     # Mock Path.exists to make the base template appear missing
     original_exists = Path.exists
 
-    def mock_exists(self):
+    def mock_exists(self: Path) -> bool:
         if self.name == "Dockerfile.base":
             return False
         return original_exists(self)
@@ -153,7 +156,9 @@ def test_bundler_generate_dockerfile_missing_base_template(
     assert success is False
 
 
-def test_bundler_generate_dockerfile_exception_handling(mock_jvagent_app, monkeypatch):
+def test_bundler_generate_dockerfile_exception_handling(
+    mock_jvagent_app: Path, monkeypatch: Any
+) -> None:
     """Test that exceptions during generation are handled gracefully."""
     bundler = Bundler(app_root=str(mock_jvagent_app))
 
@@ -162,7 +167,7 @@ def test_bundler_generate_dockerfile_exception_handling(mock_jvagent_app, monkey
 
     original_open = builtins.open
 
-    def mock_open(file, *args, **kwargs):
+    def mock_open(file: Any, *args: Any, **kwargs: Any) -> Any:
         if "Dockerfile.base" in str(file):
             raise RuntimeError("Unexpected error during generation")
         return original_open(file, *args, **kwargs)
@@ -178,7 +183,7 @@ def test_bundler_generate_dockerfile_exception_handling(mock_jvagent_app, monkey
     assert not dockerfile_path.exists()
 
 
-def test_bundler_with_complex_action_structure(temp_dir):
+def test_bundler_with_complex_action_structure(temp_dir: Path) -> None:
     """Test Bundler with complex action structure."""
     app_root = temp_dir / "complex_app"
     app_root.mkdir()
@@ -191,13 +196,7 @@ def test_bundler_with_complex_action_structure(temp_dir):
     for i in range(3):
         for j in range(2):
             action_path = (
-                app_root
-                / "agents"
-                / f"org{i}"
-                / f"agent{i}"
-                / "actions"
-                / f"org{i}"
-                / f"action{j}"
+                app_root / "agents" / f"org{i}" / f"agent{i}" / "actions" / f"org{i}" / f"action{j}"
             )
             action_path.mkdir(parents=True)
             action_info = action_path / "info.yaml"
@@ -225,7 +224,7 @@ def test_bundler_with_complex_action_structure(temp_dir):
             assert f"package{i}{j}>=1.0.0" in dockerfile_content
 
 
-def test_bundler_path_resolution(temp_dir):
+def test_bundler_path_resolution(temp_dir: Path) -> None:
     """Test that Bundler resolves paths correctly."""
     app_root = temp_dir / "test_app"
     app_root.mkdir()
@@ -239,7 +238,7 @@ def test_bundler_path_resolution(temp_dir):
     assert bundler1.app_root.resolve() == app_root.resolve()
 
     # Test with Path object
-    bundler2 = Bundler(app_root=app_root)
+    bundler2 = Bundler(app_root=str(app_root))
     assert bundler2.app_root.resolve() == app_root.resolve()
 
     # Both should be equal

@@ -8,7 +8,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from jvdeploy import Bundler
 from jvdeploy.config import DeployConfig, DeployConfigError
@@ -99,9 +98,7 @@ def setup_argparse() -> argparse.ArgumentParser:
         "deploy",
         help="Deploy application to Lambda or Kubernetes",
     )
-    deploy_subparsers = deploy_parser.add_subparsers(
-        dest="platform", help="Deployment platform"
-    )
+    deploy_subparsers = deploy_parser.add_subparsers(dest="platform", help="Deployment platform")
 
     # Deploy lambda subcommand
     lambda_parser = deploy_subparsers.add_parser(
@@ -225,9 +222,7 @@ def setup_argparse() -> argparse.ArgumentParser:
         "status",
         help="Check deployment status",
     )
-    status_subparsers = status_parser.add_subparsers(
-        dest="platform", help="Deployment platform"
-    )
+    status_subparsers = status_parser.add_subparsers(dest="platform", help="Deployment platform")
 
     # Status lambda subcommand
     status_lambda_parser = status_subparsers.add_parser(
@@ -282,9 +277,7 @@ def setup_argparse() -> argparse.ArgumentParser:
         "logs",
         help="View application logs",
     )
-    logs_subparsers = logs_parser.add_subparsers(
-        dest="platform", help="Deployment platform"
-    )
+    logs_subparsers = logs_parser.add_subparsers(dest="platform", help="Deployment platform")
 
     # Logs lambda subcommand
     logs_lambda_parser = logs_subparsers.add_parser(
@@ -359,9 +352,7 @@ def setup_argparse() -> argparse.ArgumentParser:
         "destroy",
         help="Destroy deployment resources",
     )
-    destroy_subparsers = destroy_parser.add_subparsers(
-        dest="platform", help="Deployment platform"
-    )
+    destroy_subparsers = destroy_parser.add_subparsers(dest="platform", help="Deployment platform")
 
     # Destroy lambda subcommand
     destroy_lambda_parser = destroy_subparsers.add_parser(
@@ -421,9 +412,7 @@ def handle_generate(args: argparse.Namespace) -> int:
     app_root = Path(args.app_root).expanduser().resolve()
 
     if not app_root.exists() or not app_root.is_dir():
-        logger.error(
-            f"Error: Path '{args.app_root}' does not exist or is not a directory"
-        )
+        logger.error(f"Error: Path '{args.app_root}' does not exist or is not a directory")
         return 1
 
     logger.info(f"Initializing bundler for app: {app_root}")
@@ -445,9 +434,7 @@ def handle_init(args: argparse.Namespace) -> int:
         app_root = Path(args.app_root).expanduser().resolve()
 
         if not app_root.exists() or not app_root.is_dir():
-            logger.error(
-                f"Error: Path '{args.app_root}' does not exist or is not a directory"
-            )
+            logger.error(f"Error: Path '{args.app_root}' does not exist or is not a directory")
             return 1
 
         # Determine output path
@@ -526,14 +513,11 @@ def handle_deploy(args: argparse.Namespace) -> int:
         return 1
 
     # Check if no specific steps are requested, default to --all
-    if args.platform == "lambda":
-        if not any(
-            [args.build, args.push, args.update, args.create_api, args.all_steps]
-        ):
-            args.all_steps = True
-    elif args.platform == "k8s":
-        if not any([args.build, args.push, args.apply, args.all_steps]):
-            args.all_steps = True
+    if (
+        args.platform == "lambda"
+        and not any([args.build, args.push, args.update, args.create_api, args.all_steps])
+    ) or (args.platform == "k8s" and not any([args.build, args.push, args.apply, args.all_steps])):
+        args.all_steps = True
 
     if args.platform == "lambda":
         return handle_deploy_lambda(args)
@@ -553,9 +537,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
 
         if not config_path.exists():
             logger.error(f"Configuration file not found: {config_path}")
-            print(
-                f"\n💡 Tip: Run 'jvdeploy init' to create a deploy.yaml configuration"
-            )
+            print("\n💡 Tip: Run 'jvdeploy init' to create a deploy.yaml configuration")
             return 1
 
         logger.info(f"Loading configuration from {config_path}")
@@ -576,15 +558,20 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
                 return 1
             logger.info("✓ Dockerfile generated")
 
+        lambda_config = config.get_lambda_config()
+
+        if lambda_config is None:
+            logger.error("Lambda deployment is not enabled in configuration")
+            print("\n💡 Set 'lambda.enabled: true' in deploy.yaml")
+            return 1
+
         # Apply overrides
         if args.region:
-            config.config["lambda"]["region"] = args.region
+            lambda_config["region"] = args.region
         if args.function:
-            config.config["lambda"]["function"]["name"] = args.function
+            lambda_config["function"]["name"] = args.function
         if args.env:
             config.override_env_vars(args.env)
-
-        lambda_config = config.get_lambda_config()
 
         # Add app_root to config for Docker builder
         lambda_config["app_root"] = str(app_root)
@@ -595,9 +582,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
         try:
             from jvdeploy.aws import LambdaDeployer
         except ImportError:
-            logger.error(
-                "boto3 is required for Lambda deployment. Install with: pip install boto3"
-            )
+            logger.error("boto3 is required for Lambda deployment. Install with: pip install boto3")
             return 1
 
         deployer = LambdaDeployer(lambda_config, dry_run=args.dry_run)
@@ -609,9 +594,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
             lambda_config["account_id"] = account_id
 
         # Get image URI with account_id
-        image_uri = config.get_ecr_image_uri(
-            lambda_config.get("region"), account_id=account_id
-        )
+        image_uri = config.get_ecr_image_uri(lambda_config.get("region"), account_id=account_id)
 
         # Determine which steps to perform
         build_image = args.all_steps or args.build
@@ -622,7 +605,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
         if args.dry_run:
             print("\n🔍 DRY RUN MODE - No changes will be made\n")
 
-        print(f"📦 Deploying to AWS Lambda")
+        print("📦 Deploying to AWS Lambda")
         print(f"   Region: {lambda_config.get('region')}")
         print(f"   Function: {lambda_config.get('function', {}).get('name')}")
         print(f"   Image: {image_uri}")
@@ -663,7 +646,7 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
 def handle_deploy_k8s(args: argparse.Namespace) -> int:
     """Handle Kubernetes deployment."""
     print("⚠️  'deploy k8s' command not yet implemented")
-    print(f"This will deploy your application to Kubernetes.")
+    print("This will deploy your application to Kubernetes.")
 
     if args.dry_run:
         print("(Dry run mode - no changes would be made)")
@@ -732,7 +715,7 @@ def handle_status_lambda(args: argparse.Namespace) -> int:
 
             print(json.dumps(status, indent=2))
         else:
-            print(f"\n📊 Lambda Function Status")
+            print("\n📊 Lambda Function Status")
             print(f"   Function: {status.get('function_name')}")
             print(f"   State: {status.get('state')}")
 
@@ -798,9 +781,7 @@ def handle_logs_lambda(args: argparse.Namespace) -> int:
                 return 1
 
             region = args.region or lambda_config.get("region", "us-east-1")
-            function_name = args.function or lambda_config.get("function", {}).get(
-                "name"
-            )
+            function_name = args.function or lambda_config.get("function", {}).get("name")
         else:
             if not args.function:
                 logger.error("Function name required (--function or deploy.yaml)")
@@ -823,28 +804,18 @@ def handle_logs_lambda(args: argparse.Namespace) -> int:
             since = args.since
             if since.endswith("m"):
                 minutes = int(since[:-1])
-                start_time = int(
-                    (datetime.now() - timedelta(minutes=minutes)).timestamp() * 1000
-                )
+                start_time = int((datetime.now() - timedelta(minutes=minutes)).timestamp() * 1000)
             elif since.endswith("h"):
                 hours = int(since[:-1])
-                start_time = int(
-                    (datetime.now() - timedelta(hours=hours)).timestamp() * 1000
-                )
+                start_time = int((datetime.now() - timedelta(hours=hours)).timestamp() * 1000)
             elif since.endswith("d"):
                 days = int(since[:-1])
-                start_time = int(
-                    (datetime.now() - timedelta(days=days)).timestamp() * 1000
-                )
+                start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
             else:
-                start_time = int(
-                    (datetime.now() - timedelta(minutes=10)).timestamp() * 1000
-                )
+                start_time = int((datetime.now() - timedelta(minutes=10)).timestamp() * 1000)
         else:
             # Default: last 10 minutes
-            start_time = int(
-                (datetime.now() - timedelta(minutes=10)).timestamp() * 1000
-            )
+            start_time = int((datetime.now() - timedelta(minutes=10)).timestamp() * 1000)
 
         print(f"\n📋 Lambda Logs: {function_name}")
         print(f"   Region: {region}")
@@ -865,9 +836,7 @@ def handle_logs_lambda(args: argparse.Namespace) -> int:
 
                     for event in response.get("events", []):
                         timestamp = datetime.fromtimestamp(event["timestamp"] / 1000)
-                        print(
-                            f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {event['message']}"
-                        )
+                        print(f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {event['message']}")
                         last_timestamp = max(last_timestamp, event["timestamp"] + 1)
 
                     time_module.sleep(2)
@@ -961,12 +930,12 @@ def handle_destroy_lambda(args: argparse.Namespace) -> int:
 
         # Confirm destruction
         if not args.yes:
-            print(f"\n⚠️  WARNING: This will delete the following resources:")
+            print("\n⚠️  WARNING: This will delete the following resources:")
             print(f"   - Lambda function: {function_name}")
             if args.delete_api:
-                print(f"   - API Gateway")
+                print("   - API Gateway")
             if args.delete_role:
-                print(f"   - IAM role")
+                print("   - IAM role")
 
             response = input("\nAre you sure you want to continue? (yes/no): ")
             if response.lower() != "yes":
@@ -982,7 +951,7 @@ def handle_destroy_lambda(args: argparse.Namespace) -> int:
 
         deployer = LambdaDeployer(lambda_config)
 
-        print(f"\n🗑️  Destroying Lambda deployment...")
+        print("\n🗑️  Destroying Lambda deployment...")
         results = deployer.destroy(
             function_name=function_name,
             delete_api=args.delete_api,
