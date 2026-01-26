@@ -1,4 +1,4 @@
-name: Linting and Pre-commit checks for the jvserve
+name: Linting and Pre-commit checks for the jvdeploy
 
 on:
   pull_request:
