@@ -9,49 +9,39 @@ permissions:
   contents: write
 
 jobs:
-  check-version:
-    name: Check Package Version
+  get-version:
+    name: Get Package Version
     runs-on: ubuntu-latest
     outputs:
-      version_changed: ${{ steps.check.outputs.version_changed }}
-      new_version: ${{ steps.check.outputs.new_version }}
+      version: ${{ steps.version.outputs.version }}
+      tag_exists: ${{ steps.version.outputs.tag_exists }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get previous version from Git tags
-        id: get_previous_version
+      - name: Get version from __init__.py
+        id: version
         run: |
+          VERSION=$(grep -oP '__version__\s*=\s*"\K[^"]+' jvdeploy/__init__.py)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+
+          # Check if tag already exists
           git fetch --tags
-          VERSION_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1 | sed 's/^v//')
-          echo "previous_version=${VERSION_TAG:-0.0.0}" >> $GITHUB_ENV
-          echo "Previous version: $VERSION_TAG"
-          echo "previous_version=${VERSION_TAG:-0.0.0}" >> $GITHUB_OUTPUT
-
-      - name: Get current version from __init__.py
-        id: check
-        run: |
-          CURRENT_VERSION=$(grep -oP '__version__\s*=\s*"\K[^"]+' jvdeploy/__init__.py)
-          echo "Detected package version: $CURRENT_VERSION"
-          echo "new_version=$CURRENT_VERSION" >> $GITHUB_ENV
-          echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-
-          if [ "$CURRENT_VERSION" != "$previous_version" ]; then
-            echo "version_changed=true" >> $GITHUB_ENV
-            echo "version_changed=true" >> $GITHUB_OUTPUT
-            echo "Version changed from $VERSION_TAG to $CURRENT_VERSION"
+          if git tag --list "v$VERSION" | grep -q "v$VERSION"; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION already exists"
           else
-            echo "version_changed=false" >> $GITHUB_ENV
-            echo "version_changed=false" >> $GITHUB_OUTPUT
-            echo "Version did not change"
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION does not exist"
           fi
 
   publish:
     name: Publish Package & Create Release
-    needs: check-version
-    if: ${{ needs.check-version.outputs.version_changed == 'true' }}
+    needs: get-version
+    if: ${{ needs.get-version.outputs.tag_exists == 'false' }}
     runs-on: ubuntu-latest
     environment: release
     steps:
@@ -77,8 +67,18 @@ jobs:
         run: |
           twine upload dist/*
 
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ needs.get-version.outputs.version }}" -m "Release v${{ needs.get-version.outputs.version }}"
+          git push origin "v${{ needs.get-version.outputs.version }}"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create v${{ needs.check-version.outputs.new_version }} dist/* --title "Release v${{ needs.check-version.outputs.new_version }}" --notes "Automated release for version v${{ needs.check-version.outputs.new_version }}." --generate-notes
+          gh release create "v${{ needs.get-version.outputs.version }}" dist/* \
+            --title "Release v${{ needs.get-version.outputs.version }}" \
+            --notes "Automated release for version v${{ needs.get-version.outputs.version }}." \
+            --generate-notes

@@ -5,9 +5,17 @@ from setuptools import find_packages, setup
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
+# Read version from __init__.py
+version = "0.0.0"  # default fallback
+with open("jvdeploy/__init__.py", "r", encoding="utf-8") as f:
+    for line in f:
+        if line.startswith("__version__"):
+            version = line.split("=")[1].strip().strip('"')
+            break
+
 setup(
     name="jvdeploy",
-    version="0.1.1",
+    version=version,
     description="Dockerfile generator for jvagent applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
