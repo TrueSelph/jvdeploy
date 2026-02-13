@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import yaml
 
@@ -305,9 +305,7 @@ class DeployConfig:
         # If still no account_id, return a placeholder that will be filled in later
         if not account_id:
             account_id = "{ACCOUNT_ID}"
-            logger.warning(
-                "account_id not set, will be auto-detected from AWS credentials"
-            )
+            logger.warning("account_id not set, will be auto-detected from AWS credentials")
 
         ecr_config = lambda_config.get("ecr", {})
         repo_name = ecr_config.get("repository_name", self.get_app_config().get("name"))
@@ -348,11 +346,13 @@ class DeployConfig:
         """
         if platform == "lambda":
             lambda_config = self.config.get("lambda", {})
-            return lambda_config.get("environment", {})
+            result = lambda_config.get("environment", {}) or {}
+            return cast(Dict[str, str], result)
         elif platform == "kubernetes":
             k8s_config = self.config.get("kubernetes", {})
             container_config = k8s_config.get("deployment", {}).get("container", {})
-            return container_config.get("environment", {})
+            result = container_config.get("environment", {}) or {}
+            return cast(Dict[str, str], result)
         else:
             raise DeployConfigError(f"Unknown platform: {platform}")
 
@@ -377,14 +377,9 @@ class DeployConfig:
                 self.config["kubernetes"]["deployment"] = {}
             if "container" not in self.config["kubernetes"]["deployment"]:
                 self.config["kubernetes"]["deployment"]["container"] = {}
-            if (
-                "environment"
-                not in self.config["kubernetes"]["deployment"]["container"]
-            ):
+            if "environment" not in self.config["kubernetes"]["deployment"]["container"]:
                 self.config["kubernetes"]["deployment"]["container"]["environment"] = {}
-            self.config["kubernetes"]["deployment"]["container"]["environment"][
-                key
-            ] = value
+            self.config["kubernetes"]["deployment"]["container"]["environment"][key] = value
         else:
             raise DeployConfigError(f"Unknown platform: {platform}")
 
@@ -418,9 +413,7 @@ class DeployConfig:
         return False
 
 
-def load_config(
-    config_path: str = "deploy.yaml", app_root: Optional[str] = None
-) -> DeployConfig:
+def load_config(config_path: str = "deploy.yaml", app_root: Optional[str] = None) -> DeployConfig:
     """Load deployment configuration from file.
 
     Args:

@@ -66,9 +66,7 @@ class DockerBuilder:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def build(
-        self, dockerfile_path: Optional[str] = None, no_cache: bool = False
-    ) -> str:
+    def build(self, dockerfile_path: Optional[str] = None, no_cache: bool = False) -> str:
         """Build Docker image.
 
         Args:
@@ -223,8 +221,7 @@ class DockerBuilder:
                 logger.error(f"STDOUT: {result.stdout}")
                 logger.error(f"STDERR: {result.stderr}")
                 raise DockerBuilderError(
-                    f"Docker push failed with exit code {result.returncode}\n"
-                    f"Error: {result.stderr}"
+                    f"Docker push failed with exit code {result.returncode}\nError: {result.stderr}"
                 )
 
             logger.info(f"✓ Successfully pushed image: {image_uri}")
@@ -257,8 +254,7 @@ class DockerBuilder:
 
         except ImportError:
             raise DockerBuilderError(
-                "boto3 is required for AWS operations. "
-                "Install with: pip install boto3"
+                "boto3 is required for AWS operations. Install with: pip install boto3"
             )
         except Exception as e:
             raise DockerBuilderError(f"Failed to get AWS account ID: {e}") from e
@@ -319,8 +315,7 @@ class DockerBuilder:
 
         except ImportError:
             raise DockerBuilderError(
-                "boto3 is required for ECR authentication. "
-                "Install with: pip install boto3"
+                "boto3 is required for ECR authentication. Install with: pip install boto3"
             )
         except Exception as e:
             raise DockerBuilderError(f"ECR authentication failed: {e}") from e
@@ -408,7 +403,7 @@ def build_and_push(
         builder=builder,
     )
 
-    return builder.build_and_push_to_ecr(
+    return builder_obj.build_and_push_to_ecr(
         ecr_uri=ecr_uri,
         region=region,
         account_id=account_id,
