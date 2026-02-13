@@ -1,7 +1,6 @@
 """Tests for CLI env command."""
 
 import sys
-from pathlib import Path
 
 import pytest
 import yaml
@@ -130,8 +129,7 @@ def test_env_k8s_lifecycle(temp_dir, capsys, monkeypatch):
     with open(config_path) as f:
         new_config = yaml.safe_load(f)
     assert (
-        new_config["kubernetes"]["deployment"]["container"]["environment"]["NEW_K8S"]
-        == "new_val"
+        new_config["kubernetes"]["deployment"]["container"]["environment"]["NEW_K8S"] == "new_val"
     )
 
 

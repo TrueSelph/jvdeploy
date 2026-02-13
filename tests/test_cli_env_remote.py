@@ -1,7 +1,7 @@
 """Tests for CLI env remote command."""
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -10,6 +10,8 @@ from jvdeploy.cli import main
 
 @pytest.fixture
 def mock_lambda_deployer():
+    """Mock lambda deployer."""
+
     with patch("jvdeploy.aws.LambdaDeployer") as mock:
         yield mock
 
