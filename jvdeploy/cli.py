@@ -98,7 +98,9 @@ def setup_argparse() -> argparse.ArgumentParser:
         "deploy",
         help="Deploy application to Lambda or Kubernetes",
     )
-    deploy_subparsers = deploy_parser.add_subparsers(dest="platform", help="Deployment platform")
+    deploy_subparsers = deploy_parser.add_subparsers(
+        dest="platform", help="Deployment platform"
+    )
 
     # Deploy lambda subcommand
     lambda_parser = deploy_subparsers.add_parser(
@@ -154,6 +156,10 @@ def setup_argparse() -> argparse.ArgumentParser:
         "--env",
         action="append",
         help="Override environment variables (KEY=VALUE)",
+    )
+    lambda_parser.add_argument(
+        "--builder",
+        help="Docker BuildKit builder to use",
     )
     lambda_parser.add_argument(
         "--dry-run",
@@ -212,6 +218,10 @@ def setup_argparse() -> argparse.ArgumentParser:
         help="Override environment variables (KEY=VALUE)",
     )
     k8s_parser.add_argument(
+        "--builder",
+        help="Docker BuildKit builder to use",
+    )
+    k8s_parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show manifests without applying",
@@ -222,7 +232,9 @@ def setup_argparse() -> argparse.ArgumentParser:
         "status",
         help="Check deployment status",
     )
-    status_subparsers = status_parser.add_subparsers(dest="platform", help="Deployment platform")
+    status_subparsers = status_parser.add_subparsers(
+        dest="platform", help="Deployment platform"
+    )
 
     # Status lambda subcommand
     status_lambda_parser = status_subparsers.add_parser(
@@ -277,7 +289,9 @@ def setup_argparse() -> argparse.ArgumentParser:
         "logs",
         help="View application logs",
     )
-    logs_subparsers = logs_parser.add_subparsers(dest="platform", help="Deployment platform")
+    logs_subparsers = logs_parser.add_subparsers(
+        dest="platform", help="Deployment platform"
+    )
 
     # Logs lambda subcommand
     logs_lambda_parser = logs_subparsers.add_parser(
@@ -352,7 +366,9 @@ def setup_argparse() -> argparse.ArgumentParser:
         "destroy",
         help="Destroy deployment resources",
     )
-    destroy_subparsers = destroy_parser.add_subparsers(dest="platform", help="Deployment platform")
+    destroy_subparsers = destroy_parser.add_subparsers(
+        dest="platform", help="Deployment platform"
+    )
 
     # Destroy lambda subcommand
     destroy_lambda_parser = destroy_subparsers.add_parser(
@@ -369,6 +385,14 @@ def setup_argparse() -> argparse.ArgumentParser:
         help="Lambda function name",
     )
     destroy_lambda_parser.add_argument(
+        "--name",
+        help="Lambda function name (alias for --function)",
+    )
+    destroy_lambda_parser.add_argument(
+        "--region",
+        help="AWS region (overrides config)",
+    )
+    destroy_lambda_parser.add_argument(
         "--delete-api",
         action="store_true",
         help="Also delete API Gateway",
@@ -377,6 +401,22 @@ def setup_argparse() -> argparse.ArgumentParser:
         "--delete-role",
         action="store_true",
         help="Also delete IAM role",
+    )
+    destroy_lambda_parser.add_argument(
+        "--delete-ecr",
+        action="store_true",
+        help="Also delete ECR repository and images",
+    )
+    destroy_lambda_parser.add_argument(
+        "--delete-efs",
+        action="store_true",
+        help="Also delete EFS Access Point",
+    )
+    destroy_lambda_parser.add_argument(
+        "--all",
+        dest="delete_all",
+        action="store_true",
+        help="Delete all resources (Function, API, Role, ECR, EFS)",
     )
     destroy_lambda_parser.add_argument(
         "--yes",
@@ -404,6 +444,170 @@ def setup_argparse() -> argparse.ArgumentParser:
         help="Skip confirmation prompt",
     )
 
+    # Env command
+    env_parser = subparsers.add_parser(
+        "env",
+        help="Manage environment variables",
+    )
+    env_subparsers = env_parser.add_subparsers(
+        dest="platform", help="Platform (lambda or k8s)"
+    )
+
+    # Env lambda subcommand
+    env_lambda_parser = env_subparsers.add_parser(
+        "lambda",
+        help="Manage Lambda environment variables",
+    )
+    env_lambda_subparsers = env_lambda_parser.add_subparsers(
+        dest="env_action", help="Action (list, set, delete)"
+    )
+
+    # Env lambda list
+    env_lambda_list = env_lambda_subparsers.add_parser(
+        "list", help="List environment variables"
+    )
+    env_lambda_list.add_argument("--json", action="store_true", help="Output as JSON")
+    env_lambda_list.add_argument("--table", action="store_true", help="Output as table")
+    env_lambda_list.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_lambda_list.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+    env_lambda_list.add_argument("--region", help="AWS region")
+    env_lambda_list.add_argument("--function", help="Lambda function name")
+    env_lambda_list.add_argument(
+        "--name", help="Lambda function name (alias for --function)"
+    )
+
+    # Env lambda set
+    env_lambda_set = env_lambda_subparsers.add_parser(
+        "set", help="Set environment variables"
+    )
+    env_lambda_set.add_argument("vars", nargs="+", help="Variables to set (KEY=VALUE)")
+    env_lambda_set.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_lambda_set.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+    env_lambda_set.add_argument("--region", help="AWS region")
+    env_lambda_set.add_argument("--function", help="Lambda function name")
+    env_lambda_set.add_argument(
+        "--name", help="Lambda function name (alias for --function)"
+    )
+
+    # Env lambda delete
+    env_lambda_delete = env_lambda_subparsers.add_parser(
+        "delete", help="Delete environment variables"
+    )
+    env_lambda_delete.add_argument("keys", nargs="+", help="Keys to delete")
+    env_lambda_delete.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_lambda_delete.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+    env_lambda_delete.add_argument("--region", help="AWS region")
+    env_lambda_delete.add_argument("--function", help="Lambda function name")
+    env_lambda_delete.add_argument(
+        "--name", help="Lambda function name (alias for --function)"
+    )
+
+    # Env k8s subcommand
+    env_k8s_parser = env_subparsers.add_parser(
+        "k8s",
+        help="Manage Kubernetes environment variables",
+    )
+    env_k8s_subparsers = env_k8s_parser.add_subparsers(
+        dest="env_action", help="Action (list, set, delete)"
+    )
+
+    # Env k8s list
+    env_k8s_list = env_k8s_subparsers.add_parser(
+        "list", help="List environment variables"
+    )
+    env_k8s_list.add_argument("--json", action="store_true", help="Output as JSON")
+    env_k8s_list.add_argument("--table", action="store_true", help="Output as table")
+    env_k8s_list.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_k8s_list.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+
+    # Env k8s set
+    env_k8s_set = env_k8s_subparsers.add_parser("set", help="Set environment variables")
+    env_k8s_set.add_argument("vars", nargs="+", help="Variables to set (KEY=VALUE)")
+    env_k8s_set.add_argument("--config", default="deploy.yaml", help="Config file path")
+    env_k8s_set.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+
+    # Env k8s delete
+    env_k8s_delete = env_k8s_subparsers.add_parser(
+        "delete", help="Delete environment variables"
+    )
+    env_k8s_delete.add_argument("keys", nargs="+", help="Keys to delete")
+    env_k8s_delete.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_k8s_delete.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+
+    # Env kubernetes subcommand (alias)
+    env_kubernetes_parser = env_subparsers.add_parser(
+        "kubernetes",
+        help="Manage Kubernetes environment variables",
+    )
+    env_kubernetes_subparsers = env_kubernetes_parser.add_subparsers(
+        dest="env_action", help="Action (list, set, delete)"
+    )
+
+    # Env kubernetes list
+    env_kubernetes_list = env_kubernetes_subparsers.add_parser(
+        "list", help="List environment variables"
+    )
+    env_kubernetes_list.add_argument(
+        "--json", action="store_true", help="Output as JSON"
+    )
+    env_kubernetes_list.add_argument(
+        "--table", action="store_true", help="Output as table"
+    )
+    env_kubernetes_list.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_kubernetes_list.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+
+    # Env kubernetes set
+    env_kubernetes_set = env_kubernetes_subparsers.add_parser(
+        "set", help="Set environment variables"
+    )
+    env_kubernetes_set.add_argument(
+        "vars", nargs="+", help="Variables to set (KEY=VALUE)"
+    )
+    env_kubernetes_set.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_kubernetes_set.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+
+    # Env kubernetes delete
+    env_kubernetes_delete = env_kubernetes_subparsers.add_parser(
+        "delete", help="Delete environment variables"
+    )
+    env_kubernetes_delete.add_argument("keys", nargs="+", help="Keys to delete")
+    env_kubernetes_delete.add_argument(
+        "--config", default="deploy.yaml", help="Config file path"
+    )
+    env_kubernetes_delete.add_argument(
+        "app_root", nargs="?", default=os.getcwd(), help="App root"
+    )
+
     return parser
 
 
@@ -412,7 +616,9 @@ def handle_generate(args: argparse.Namespace) -> int:
     app_root = Path(args.app_root).expanduser().resolve()
 
     if not app_root.exists() or not app_root.is_dir():
-        logger.error(f"Error: Path '{args.app_root}' does not exist or is not a directory")
+        logger.error(
+            f"Error: Path '{args.app_root}' does not exist or is not a directory"
+        )
         return 1
 
     logger.info(f"Initializing bundler for app: {app_root}")
@@ -434,7 +640,9 @@ def handle_init(args: argparse.Namespace) -> int:
         app_root = Path(args.app_root).expanduser().resolve()
 
         if not app_root.exists() or not app_root.is_dir():
-            logger.error(f"Error: Path '{args.app_root}' does not exist or is not a directory")
+            logger.error(
+                f"Error: Path '{args.app_root}' does not exist or is not a directory"
+            )
             return 1
 
         # Determine output path
@@ -515,8 +723,13 @@ def handle_deploy(args: argparse.Namespace) -> int:
     # Check if no specific steps are requested, default to --all
     if (
         args.platform == "lambda"
-        and not any([args.build, args.push, args.update, args.create_api, args.all_steps])
-    ) or (args.platform == "k8s" and not any([args.build, args.push, args.apply, args.all_steps])):
+        and not any(
+            [args.build, args.push, args.update, args.create_api, args.all_steps]
+        )
+    ) or (
+        args.platform == "k8s"
+        and not any([args.build, args.push, args.apply, args.all_steps])
+    ):
         args.all_steps = True
 
     if args.platform == "lambda":
@@ -578,11 +791,18 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
         lambda_config["app"] = config.get_app_config()
         lambda_config["image"] = config.get_image_config()
 
+        if args.builder:
+            if "build" not in lambda_config["image"]:
+                lambda_config["image"]["build"] = {}
+            lambda_config["image"]["build"]["builder"] = args.builder
+
         # Import and create deployer
         try:
             from jvdeploy.aws import LambdaDeployer
         except ImportError:
-            logger.error("boto3 is required for Lambda deployment. Install with: pip install boto3")
+            logger.error(
+                "boto3 is required for Lambda deployment. Install with: pip install boto3"
+            )
             return 1
 
         deployer = LambdaDeployer(lambda_config, dry_run=args.dry_run)
@@ -594,7 +814,9 @@ def handle_deploy_lambda(args: argparse.Namespace) -> int:
             lambda_config["account_id"] = account_id
 
         # Get image URI with account_id
-        image_uri = config.get_ecr_image_uri(lambda_config.get("region"), account_id=account_id)
+        image_uri = config.get_ecr_image_uri(
+            lambda_config.get("region"), account_id=account_id
+        )
 
         # Determine which steps to perform
         build_image = args.all_steps or args.build
@@ -781,7 +1003,9 @@ def handle_logs_lambda(args: argparse.Namespace) -> int:
                 return 1
 
             region = args.region or lambda_config.get("region", "us-east-1")
-            function_name = args.function or lambda_config.get("function", {}).get("name")
+            function_name = args.function or lambda_config.get("function", {}).get(
+                "name"
+            )
         else:
             if not args.function:
                 logger.error("Function name required (--function or deploy.yaml)")
@@ -804,18 +1028,28 @@ def handle_logs_lambda(args: argparse.Namespace) -> int:
             since = args.since
             if since.endswith("m"):
                 minutes = int(since[:-1])
-                start_time = int((datetime.now() - timedelta(minutes=minutes)).timestamp() * 1000)
+                start_time = int(
+                    (datetime.now() - timedelta(minutes=minutes)).timestamp() * 1000
+                )
             elif since.endswith("h"):
                 hours = int(since[:-1])
-                start_time = int((datetime.now() - timedelta(hours=hours)).timestamp() * 1000)
+                start_time = int(
+                    (datetime.now() - timedelta(hours=hours)).timestamp() * 1000
+                )
             elif since.endswith("d"):
                 days = int(since[:-1])
-                start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+                start_time = int(
+                    (datetime.now() - timedelta(days=days)).timestamp() * 1000
+                )
             else:
-                start_time = int((datetime.now() - timedelta(minutes=10)).timestamp() * 1000)
+                start_time = int(
+                    (datetime.now() - timedelta(minutes=10)).timestamp() * 1000
+                )
         else:
             # Default: last 10 minutes
-            start_time = int((datetime.now() - timedelta(minutes=10)).timestamp() * 1000)
+            start_time = int(
+                (datetime.now() - timedelta(minutes=10)).timestamp() * 1000
+            )
 
         print(f"\n📋 Lambda Logs: {function_name}")
         print(f"   Region: {region}")
@@ -836,7 +1070,9 @@ def handle_logs_lambda(args: argparse.Namespace) -> int:
 
                     for event in response.get("events", []):
                         timestamp = datetime.fromtimestamp(event["timestamp"] / 1000)
-                        print(f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {event['message']}")
+                        print(
+                            f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {event['message']}"
+                        )
                         last_timestamp = max(last_timestamp, event["timestamp"] + 1)
 
                     time_module.sleep(2)
@@ -901,8 +1137,12 @@ def handle_destroy(args: argparse.Namespace) -> int:
 def handle_destroy_lambda(args: argparse.Namespace) -> int:
     """Handle Lambda deployment destruction."""
     try:
+        # Resolve function name from args (support both --function and --name)
+        arg_function_name = args.function or args.name
+
         # Load configuration if available
         config_path = Path(args.config)
+        lambda_config = None
 
         if config_path.exists():
             config = DeployConfig(str(config_path))
@@ -912,30 +1152,88 @@ def handle_destroy_lambda(args: argparse.Namespace) -> int:
                 logger.error("Lambda deployment is not enabled in configuration")
                 return 1
 
-            if args.function:
-                lambda_config["function"]["name"] = args.function
+            config_function_name = lambda_config.get("function", {}).get("name")
+
+            # If explicit name provided and differs from config, override resources
+            if arg_function_name and arg_function_name != config_function_name:
+                logger.info(
+                    f"Targeting function '{arg_function_name}' (overriding config '{config_function_name}')"
+                )
+                logger.info(
+                    "Using standard naming conventions for associated resources."
+                )
+
+                lambda_config["function"]["name"] = arg_function_name
+
+                # Override derived resource names to prevent deleting config-defined resources
+                # for the wrong function
+                lambda_config.setdefault("api_gateway", {})[
+                    "name"
+                ] = f"{arg_function_name}-api"
+                lambda_config.setdefault("iam", {})[
+                    "role_name"
+                ] = f"{arg_function_name}-lambda-role"
+                lambda_config.setdefault("ecr", {})[
+                    "repository_name"
+                ] = arg_function_name
+
+                # EFS access point usually doesn't follow a simple naming convention in config
+                # but relies on tags or explicit ID. We can't easily guess it, so we leave it.
+                # The destroy logic tries to find by tag 'JvAgentApp={app_name}' which might be mismatching now.
+                # But we can try setting app name temporarily
+                if "app" not in lambda_config:
+                    lambda_config["app"] = {}
+                lambda_config["app"]["name"] = arg_function_name
+
+            elif arg_function_name:
+                # Name matches (or just provided), ensure it's set
+                lambda_config["function"]["name"] = arg_function_name
+
         else:
-            if not args.function:
-                logger.error("Function name required (--function or deploy.yaml)")
+            if not arg_function_name:
+                logger.error(
+                    "Function name required (--name, --function or deploy.yaml)"
+                )
                 return 1
 
             lambda_config = {
-                "region": "us-east-1",
-                "function": {"name": args.function},
-                "api_gateway": {"name": f"{args.function}-api"},
-                "iam": {"role_name": f"{args.function}-lambda-role"},
+                "region": args.region or "us-east-1",
+                "function": {"name": arg_function_name},
+                "api_gateway": {"name": f"{arg_function_name}-api"},
+                "iam": {"role_name": f"{arg_function_name}-lambda-role"},
+                "ecr": {"repository_name": arg_function_name},
+                "app": {"name": arg_function_name},  # For EFS tag search
             }
 
+        # Override region if provided
+        if args.region:
+            lambda_config["region"] = args.region
+
         function_name = lambda_config.get("function", {}).get("name")
+
+        # Handle --all flag
+        if args.delete_all:
+            args.delete_api = True
+            args.delete_role = True
+            args.delete_ecr = True
+            args.delete_efs = True
 
         # Confirm destruction
         if not args.yes:
             print("\n⚠️  WARNING: This will delete the following resources:")
             print(f"   - Lambda function: {function_name}")
             if args.delete_api:
-                print("   - API Gateway")
+                print(
+                    f"   - API Gateway: {lambda_config.get('api_gateway', {}).get('name')}"
+                )
             if args.delete_role:
-                print("   - IAM role")
+                print(f"   - IAM role: {lambda_config.get('iam', {}).get('role_name')}")
+            if args.delete_ecr:
+                print(
+                    f"   - ECR Repository: {lambda_config.get('ecr', {}).get('repository_name')}"
+                )
+            if args.delete_efs:
+                print("   - EFS Access Point (auto-detected)")
 
             response = input("\nAre you sure you want to continue? (yes/no): ")
             if response.lower() != "yes":
@@ -956,6 +1254,8 @@ def handle_destroy_lambda(args: argparse.Namespace) -> int:
             function_name=function_name,
             delete_api=args.delete_api,
             delete_role=args.delete_role,
+            delete_ecr=args.delete_ecr,
+            delete_efs=args.delete_efs,
         )
 
         print("\nDeleted resources:")
@@ -985,6 +1285,149 @@ def handle_destroy_k8s(args: argparse.Namespace) -> int:
         print("Note: This command requires --yes flag for confirmation.")
 
     return 1
+
+
+def handle_env(args: argparse.Namespace) -> int:
+    """Handle env command."""
+    if not args.platform:
+        logger.error("Error: Please specify a platform (lambda or k8s)")
+        return 1
+
+    if not args.env_action:
+        logger.error("Error: Please specify an action (list, set, delete)")
+        return 1
+
+    # Check if this is a remote Lambda operation
+    is_remote = False
+    if args.platform == "lambda":
+        if getattr(args, "function", None) or getattr(args, "name", None):
+            is_remote = True
+
+    if is_remote:
+        return handle_env_lambda_remote(args)
+
+    # Local config operation
+    app_root = Path(args.app_root).expanduser().resolve()
+    config_path = app_root / args.config
+
+    if not config_path.exists():
+        logger.error(f"Configuration file not found: {config_path}")
+        return 1
+
+    try:
+        config = DeployConfig(str(config_path), str(app_root))
+
+        # Map cli platform to config platform
+        platform = args.platform
+        config_platform = (
+            "kubernetes" if platform in ["k8s", "kubernetes"] else "lambda"
+        )
+
+        if args.env_action == "list":
+            env_vars = config.get_env_vars(config_platform) or {}
+
+            if args.json:
+                import json
+
+                print(json.dumps(env_vars, indent=2))
+            elif args.table:
+                print(f"{'KEY':<30} {'VALUE'}")
+                print("-" * 60)
+                for k, v in env_vars.items():
+                    print(f"{k:<30} {v}")
+            else:
+                for k, v in env_vars.items():
+                    print(f"{k}={v}")
+
+        elif args.env_action == "set":
+            for var in args.vars:
+                if "=" not in var:
+                    logger.warning(f"Invalid format: {var} (expected KEY=VALUE)")
+                    continue
+                key, value = var.split("=", 1)
+                config.set_env_var(config_platform, key, value)
+            config.save()
+            print("Environment variables updated.")
+
+        elif args.env_action == "delete":
+            for key in args.keys:
+                if config.delete_env_var(config_platform, key):
+                    print(f"Deleted {key}")
+                else:
+                    logger.warning(f"Variable {key} not found")
+            config.save()
+
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return 1
+
+    return 0
+
+
+def handle_env_lambda_remote(args: argparse.Namespace) -> int:
+    """Handle remote Lambda environment variable operations."""
+    try:
+        from jvdeploy.aws import LambdaDeployer
+    except ImportError:
+        logger.error("boto3 is required. Install with: pip install boto3")
+        return 1
+
+    function_name = args.function or args.name
+    region = args.region or "us-east-1"
+
+    # Create minimal config for deployer
+    config = {"region": region, "function": {"name": function_name}}
+    deployer = LambdaDeployer(config)
+
+    try:
+        if args.env_action == "list":
+            env_vars = deployer.get_env_vars(function_name)
+            if args.json:
+                import json
+
+                print(json.dumps(env_vars, indent=2))
+            elif args.table:
+                print(f"{'KEY':<30} {'VALUE'}")
+                print("-" * 60)
+                for k, v in env_vars.items():
+                    print(f"{k:<30} {v}")
+            else:
+                for k, v in env_vars.items():
+                    print(f"{k}={v}")
+
+        elif args.env_action == "set":
+            # Get current vars first to merge
+            current_vars = deployer.get_env_vars(function_name)
+
+            # Update with new values
+            for var in args.vars:
+                if "=" not in var:
+                    logger.warning(f"Invalid format: {var} (expected KEY=VALUE)")
+                    continue
+                key, value = var.split("=", 1)
+                current_vars[key] = value
+
+            deployer.update_env_vars(current_vars, function_name)
+
+        elif args.env_action == "delete":
+            # Get current vars first
+            current_vars = deployer.get_env_vars(function_name)
+
+            # Remove keys
+            for key in args.keys:
+                if key in current_vars:
+                    del current_vars[key]
+                    print(f"Removed {key}")
+                else:
+                    logger.warning(f"Variable {key} not found")
+
+            deployer.update_env_vars(current_vars, function_name)
+
+    except Exception as e:
+        logger.error(f"Remote operation failed: {e}")
+        return 1
+
+    return 0
 
 
 def main() -> None:
@@ -1022,6 +1465,8 @@ def main() -> None:
             exit_code = handle_logs(args)
         elif args.command == "destroy":
             exit_code = handle_destroy(args)
+        elif args.command == "env":
+            exit_code = handle_env(args)
         else:
             parser.print_help()
             exit_code = 0

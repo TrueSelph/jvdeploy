@@ -27,6 +27,7 @@ class DockerBuilder:
         image_name: str,
         image_tag: str = "latest",
         platform: str = "linux/amd64",
+        builder: Optional[str] = None,
     ):
         """Initialize Docker builder.
 
@@ -35,11 +36,13 @@ class DockerBuilder:
             image_name: Name of the Docker image (without tag)
             image_tag: Image tag (default: latest)
             platform: Target platform (default: linux/amd64)
+            builder: Docker BuildKit builder to use (optional)
         """
         self.app_root = Path(app_root)
         self.image_name = image_name
         self.image_tag = image_tag
         self.platform = platform
+        self.builder = builder
 
         if not self.app_root.exists():
             raise DockerBuilderError(f"App root directory not found: {app_root}")
@@ -63,7 +66,9 @@ class DockerBuilder:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def build(self, dockerfile_path: Optional[str] = None, no_cache: bool = False) -> str:
+    def build(
+        self, dockerfile_path: Optional[str] = None, no_cache: bool = False
+    ) -> str:
         """Build Docker image.
 
         Args:
@@ -119,6 +124,9 @@ class DockerBuilder:
             "-f",
             str(dockerfile_path_obj),
         ]
+
+        if self.builder:
+            cmd.extend(["--builder", self.builder])
 
         if no_cache:
             cmd.append("--no-cache")
@@ -249,7 +257,8 @@ class DockerBuilder:
 
         except ImportError:
             raise DockerBuilderError(
-                "boto3 is required for AWS operations. " "Install with: pip install boto3"
+                "boto3 is required for AWS operations. "
+                "Install with: pip install boto3"
             )
         except Exception as e:
             raise DockerBuilderError(f"Failed to get AWS account ID: {e}") from e
@@ -310,7 +319,8 @@ class DockerBuilder:
 
         except ImportError:
             raise DockerBuilderError(
-                "boto3 is required for ECR authentication. " "Install with: pip install boto3"
+                "boto3 is required for ECR authentication. "
+                "Install with: pip install boto3"
             )
         except Exception as e:
             raise DockerBuilderError(f"ECR authentication failed: {e}") from e
@@ -369,6 +379,7 @@ def build_and_push(
     account_id: Optional[str] = None,
     platform: str = "linux/amd64",
     no_cache: bool = False,
+    builder: Optional[str] = None,
 ) -> str:
     """Build and push Docker image to ECR (convenience function).
 
@@ -381,6 +392,7 @@ def build_and_push(
         account_id: AWS account ID (optional, will be auto-detected if not provided)
         platform: Target platform (default: linux/amd64)
         no_cache: If True, build without cache
+        builder: Docker BuildKit builder to use (optional)
 
     Returns:
         Full ECR image URI
@@ -388,11 +400,12 @@ def build_and_push(
     Raises:
         DockerBuilderError: If build or push fails
     """
-    builder = DockerBuilder(
+    builder_obj = DockerBuilder(
         app_root=app_root,
         image_name=image_name,
         image_tag=image_tag,
         platform=platform,
+        builder=builder,
     )
 
     return builder.build_and_push_to_ecr(

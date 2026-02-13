@@ -305,7 +305,9 @@ class DeployConfig:
         # If still no account_id, return a placeholder that will be filled in later
         if not account_id:
             account_id = "{ACCOUNT_ID}"
-            logger.warning("account_id not set, will be auto-detected from AWS credentials")
+            logger.warning(
+                "account_id not set, will be auto-detected from AWS credentials"
+            )
 
         ecr_config = lambda_config.get("ecr", {})
         repo_name = ecr_config.get("repository_name", self.get_app_config().get("name"))
@@ -321,8 +323,104 @@ class DeployConfig:
         """
         return self.config.copy()
 
+    def save(self, path: Optional[str] = None) -> None:
+        """Save configuration to file.
 
-def load_config(config_path: str = "deploy.yaml", app_root: Optional[str] = None) -> DeployConfig:
+        Args:
+            path: Path to save configuration to (default: original path)
+        """
+        save_path = Path(path) if path else self.config_path
+        try:
+            with open(save_path, "w") as f:
+                yaml.dump(self.config, f, default_flow_style=False, sort_keys=False)
+            logger.info(f"Configuration saved to {save_path}")
+        except Exception as e:
+            raise DeployConfigError(f"Failed to save configuration: {e}")
+
+    def get_env_vars(self, platform: str) -> Dict[str, str]:
+        """Get environment variables for a platform.
+
+        Args:
+            platform: 'lambda' or 'kubernetes'
+
+        Returns:
+            Dictionary of environment variables
+        """
+        if platform == "lambda":
+            lambda_config = self.config.get("lambda", {})
+            return lambda_config.get("environment", {})
+        elif platform == "kubernetes":
+            k8s_config = self.config.get("kubernetes", {})
+            container_config = k8s_config.get("deployment", {}).get("container", {})
+            return container_config.get("environment", {})
+        else:
+            raise DeployConfigError(f"Unknown platform: {platform}")
+
+    def set_env_var(self, platform: str, key: str, value: str) -> None:
+        """Set environment variable for a platform.
+
+        Args:
+            platform: 'lambda' or 'kubernetes'
+            key: Environment variable name
+            value: Environment variable value
+        """
+        if platform == "lambda":
+            if "lambda" not in self.config:
+                self.config["lambda"] = {"enabled": True}
+            if "environment" not in self.config["lambda"]:
+                self.config["lambda"]["environment"] = {}
+            self.config["lambda"]["environment"][key] = value
+        elif platform == "kubernetes":
+            if "kubernetes" not in self.config:
+                self.config["kubernetes"] = {"enabled": True}
+            if "deployment" not in self.config["kubernetes"]:
+                self.config["kubernetes"]["deployment"] = {}
+            if "container" not in self.config["kubernetes"]["deployment"]:
+                self.config["kubernetes"]["deployment"]["container"] = {}
+            if (
+                "environment"
+                not in self.config["kubernetes"]["deployment"]["container"]
+            ):
+                self.config["kubernetes"]["deployment"]["container"]["environment"] = {}
+            self.config["kubernetes"]["deployment"]["container"]["environment"][
+                key
+            ] = value
+        else:
+            raise DeployConfigError(f"Unknown platform: {platform}")
+
+    def delete_env_var(self, platform: str, key: str) -> bool:
+        """Delete environment variable for a platform.
+
+        Args:
+            platform: 'lambda' or 'kubernetes'
+            key: Environment variable name
+
+        Returns:
+            True if deleted, False if not found
+        """
+        if platform == "lambda":
+            env_vars = self.config.get("lambda", {}).get("environment")
+            if env_vars and key in env_vars:
+                del env_vars[key]
+                return True
+        elif platform == "kubernetes":
+            env_vars = (
+                self.config.get("kubernetes", {})
+                .get("deployment", {})
+                .get("container", {})
+                .get("environment")
+            )
+            if env_vars and key in env_vars:
+                del env_vars[key]
+                return True
+        else:
+            raise DeployConfigError(f"Unknown platform: {platform}")
+        return False
+
+
+def load_config(
+    config_path: str = "deploy.yaml", app_root: Optional[str] = None
+) -> DeployConfig:
     """Load deployment configuration from file.
 
     Args:
