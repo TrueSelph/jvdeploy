@@ -57,6 +57,17 @@ def setup_argparse() -> argparse.ArgumentParser:
         help="Path to jvagent app root directory (default: current directory)",
     )
 
+    # pip-get-packages command
+    pip_get_packages_parser = subparsers.add_parser(
+        "pip-get-packages",
+        help="Output core pip packages as space-separated string for Dockerfile",
+    )
+    pip_get_packages_parser.add_argument(
+        "--jvagent-path",
+        default="../jvagent",
+        help="Path to jvagent directory (default: ../jvagent relative to jvdeploy)",
+    )
+
     # Init command
     init_parser = subparsers.add_parser(
         "init",
@@ -565,6 +576,28 @@ def handle_generate(args: argparse.Namespace) -> int:
         return 1
 
     print(f"\n✓ Dockerfile generated successfully in {app_root}")
+    return 0
+
+
+def handle_pip_get_packages(args: argparse.Namespace) -> int:
+    """Handle pip-get-packages command."""
+    from jvdeploy.dockerfile_generator import discover_core_packages
+
+    jvagent_path = Path(args.jvagent_path).expanduser().resolve()
+
+    if not jvagent_path.exists() or not jvagent_path.is_dir():
+        logger.error(
+            f"Error: jvagent path '{args.jvagent_path}' does not exist or is not a directory"
+        )
+        return 1
+
+    packages = discover_core_packages(jvagent_path)
+
+    if packages:
+        print(packages)
+    else:
+        logger.warning("No core packages found")
+
     return 0
 
 
@@ -1349,6 +1382,8 @@ def main() -> None:
         # Dispatch to command handlers
         if args.command == "generate":
             exit_code = handle_generate(args)
+        elif args.command == "pip-get-packages":
+            exit_code = handle_pip_get_packages(args)
         elif args.command == "init":
             exit_code = handle_init(args)
         elif args.command == "deploy":

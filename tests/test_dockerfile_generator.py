@@ -311,4 +311,5 @@ def test_generate_dockerfile_whitespace_handling(temp_dir, mock_base_template):
     assert "openai>=1.0.0" in dockerfile_content
     assert "httpx>=0.24.0" in dockerfile_content
     # Empty string should be filtered out
-    assert dockerfile_content.count("RUN") == 1
+    # Now has 2 RUN commands: pip-get-packages and action dependencies
+    assert dockerfile_content.count("RUN") == 2

@@ -119,6 +119,8 @@ def base_template_content() -> str:
 WORKDIR /var/task
 COPY . /var/task/
 
+RUN pip install --no-cache-dir $(jvdeploy pip-get-packages --jvagent-path ./jvagent)
+
 # {{ACTION_DEPENDENCIES}}
 """
 

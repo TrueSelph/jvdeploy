@@ -139,7 +139,7 @@ def generate_dockerfile_run_commands(dependencies: Dict[str, List[str]]) -> str:
 
         if unique_deps:
             commands.append(f"# Dependencies for {action_name}")
-            commands.append(f'RUN /opt/venv/bin/pip install --no-cache-dir {" ".join(unique_deps)}')
+            commands.append(f"RUN /opt/venv/bin/pip install --no-cache-dir {' '.join(unique_deps)}")
 
     return "\n".join(commands)
 
@@ -190,3 +190,80 @@ def generate_dockerfile(app_root: Path, base_template_path: Path) -> str:
             dockerfile_content = dockerfile_content.replace(placeholder, "")
 
     return dockerfile_content
+
+
+def discover_core_packages(jvagent_path: Path) -> str:
+    """Discover pip packages from core actions in jvagent.
+
+    Scans the jvagent core action directories to find all info.yaml files
+    and extract their pip dependencies.
+
+    Args:
+        jvagent_path: Path to the jvagent directory (e.g., ../jvagent)
+
+    Returns:
+        Space-separated string of unique pip packages
+    """
+    dependencies: Dict[str, List[str]] = {}
+    core_actions_path = jvagent_path / "jvagent" / "action"
+
+    if not core_actions_path.exists() or not core_actions_path.is_dir():
+        logger.debug(f"No core actions directory found at {core_actions_path}")
+        return ""
+
+    for action_dir in core_actions_path.iterdir():
+        if not action_dir.is_dir():
+            continue
+
+        info_file = action_dir / "info.yaml"
+        if not info_file.exists():
+            continue
+
+        try:
+            with open(info_file, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            if not data or not isinstance(data, dict):
+                continue
+
+            package = data.get("package", {})
+            if not isinstance(package, dict):
+                continue
+
+            deps = package.get("dependencies", {})
+            if not isinstance(deps, dict):
+                continue
+
+            pip_deps = deps.get("pip", [])
+            if not pip_deps or not isinstance(pip_deps, list):
+                continue
+
+            pip_deps = [dep.strip() for dep in pip_deps if dep and dep.strip()]
+
+            if pip_deps:
+                action_name = package.get("name")
+                if not action_name:
+                    action_name = f"core/{action_dir.name}"
+                dependencies[action_name] = pip_deps
+                logger.debug(f"Found {len(pip_deps)} dependencies for core action {action_name}")
+
+        except Exception as e:
+            logger.warning(f"Error reading {info_file}: {e}")
+            continue
+
+    if not dependencies:
+        return ""
+
+    all_deps = []
+    for deps in dependencies.values():
+        all_deps.extend(deps)
+
+    seen = set()
+    unique_deps = []
+    for dep in all_deps:
+        pkg_name = dep.split(">=")[0].split("==")[0].split("<")[0].split("~")[0].strip()
+        if pkg_name not in seen:
+            seen.add(pkg_name)
+            unique_deps.append(dep)
+
+    return " ".join(unique_deps)
