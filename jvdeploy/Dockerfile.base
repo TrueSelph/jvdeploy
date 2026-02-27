@@ -3,6 +3,7 @@ FROM registry.v75inc.dev/jvagent/jvagent-base:latest
 WORKDIR /var/task
 COPY . /var/task/
 
+RUN pip install --no-cache-dir jvdeploy
 RUN pip install --no-cache-dir $(jvdeploy pip-get-packages --jvagent-path ./jvagent)
 
 # {{ACTION_DEPENDENCIES}}
