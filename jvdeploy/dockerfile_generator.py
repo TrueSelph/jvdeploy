@@ -211,14 +211,12 @@ def discover_core_packages(jvagent_path: Path) -> str:
         logger.debug(f"No core actions directory found at {core_actions_path}")
         return ""
 
-    for action_dir in core_actions_path.iterdir():
-        if not action_dir.is_dir():
-            continue
+    info_files = sorted(
+        core_actions_path.rglob("info.yaml"),
+        key=lambda info_file: info_file.relative_to(core_actions_path).as_posix(),
+    )
 
-        info_file = action_dir / "info.yaml"
-        if not info_file.exists():
-            continue
-
+    for info_file in info_files:
         try:
             with open(info_file, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
@@ -243,7 +241,12 @@ def discover_core_packages(jvagent_path: Path) -> str:
             if pip_deps:
                 action_name = package.get("name")
                 if not action_name:
-                    action_name = f"core/{action_dir.name}"
+                    relative_action_path = info_file.parent.relative_to(
+                        core_actions_path
+                    ).as_posix()
+                    if relative_action_path == ".":
+                        relative_action_path = info_file.parent.name
+                    action_name = f"core/{relative_action_path}"
                 dependencies[action_name] = pip_deps
                 logger.debug(f"Found {len(pip_deps)} dependencies for core action {action_name}")
 
