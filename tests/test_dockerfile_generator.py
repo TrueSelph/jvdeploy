@@ -4,6 +4,7 @@ import pytest
 
 from jvdeploy.dockerfile_generator import (
     discover_action_dependencies,
+    discover_core_packages,
     generate_dockerfile,
     generate_dockerfile_run_commands,
 )
@@ -176,12 +177,84 @@ def test_generate_dockerfile_run_commands_sorted():
     assert action_lines[2] == "# Dependencies for zorg/action_z"
 
 
+def test_discover_core_packages_recursively_handles_nested_actions(temp_dir):
+    """Test recursive discovery of core action packages from nested action trees."""
+    jvagent_root = temp_dir / "jvagent_root"
+    core_actions_path = jvagent_root / "jvagent" / "action"
+    core_actions_path.mkdir(parents=True)
+
+    immediate_action = core_actions_path / "basic_action"
+    immediate_action.mkdir()
+    (immediate_action / "info.yaml").write_text(
+        """package:
+  name: core/basic_action
+  dependencies:
+    pip:
+      - requests>=2.31.0
+      - httpx>=0.24.0
+"""
+    )
+
+    nested_action = core_actions_path / "google" / "google_drive_action"
+    nested_action.mkdir(parents=True)
+    (nested_action / "info.yaml").write_text(
+        """package:
+  name: core/google_drive_action
+  dependencies:
+    pip:
+      - google-api-python-client>=2.0.0
+      - requests>=2.31.0
+"""
+    )
+
+    first_shared_action = core_actions_path / "model" / "language" / "provider_a" / "shared"
+    first_shared_action.mkdir(parents=True)
+    (first_shared_action / "info.yaml").write_text(
+        """package:
+  dependencies:
+    pip:
+      - provider-a-sdk>=1.0.0
+"""
+    )
+
+    second_shared_action = core_actions_path / "model" / "language" / "provider_b" / "shared"
+    second_shared_action.mkdir(parents=True)
+    (second_shared_action / "info.yaml").write_text(
+        """package:
+  dependencies:
+    pip:
+      - provider-b-sdk>=2.0.0
+"""
+    )
+
+    invalid_nested_action = core_actions_path / "google" / "broken_action"
+    invalid_nested_action.mkdir(parents=True)
+    (invalid_nested_action / "info.yaml").write_text("invalid: yaml: content: [")
+
+    empty_nested_action = core_actions_path / "google" / "empty_action"
+    empty_nested_action.mkdir(parents=True)
+    (empty_nested_action / "info.yaml").write_text(
+        """package:
+  name: core/google_empty
+  dependencies:
+    pip: []
+"""
+    )
+
+    packages = discover_core_packages(jvagent_root)
+
+    assert (
+        packages == "requests>=2.31.0 httpx>=0.24.0 google-api-python-client>=2.0.0 "
+        "provider-a-sdk>=1.0.0 provider-b-sdk>=2.0.0"
+    )
+
+
 def test_generate_dockerfile_with_dependencies(mock_jvagent_app, mock_base_template):
     """Test generating Dockerfile with action dependencies."""
     dockerfile_content = generate_dockerfile(mock_jvagent_app, mock_base_template)
 
     # Check base template content is present
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
     assert "WORKDIR /var/task" in dockerfile_content
     assert "COPY . /var/task/" in dockerfile_content
 
@@ -211,7 +284,7 @@ def test_generate_dockerfile_no_dependencies(mock_app_no_dependencies, mock_base
     dockerfile_content = generate_dockerfile(mock_app_no_dependencies, mock_base_template)
 
     # Check base template content is present
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
     assert "WORKDIR /var/task" in dockerfile_content
     assert "COPY . /var/task/" in dockerfile_content
 
@@ -228,7 +301,7 @@ def test_generate_dockerfile_no_agents(mock_app_no_agents, mock_base_template):
     dockerfile_content = generate_dockerfile(mock_app_no_agents, mock_base_template)
 
     # Check base template content is present
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
 
     # Check no dependency sections are present
     assert "# Action-specific pip dependencies" not in dockerfile_content

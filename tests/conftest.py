@@ -114,7 +114,7 @@ def mock_app_no_agents(temp_dir: Path) -> Path:
 @pytest.fixture
 def base_template_content() -> str:
     """Return base Dockerfile template content."""
-    return """FROM registry.v75inc.dev/jvagent/jvagent-base:latest
+    return """FROM public.ecr.aws/s1x1t0a3/jvagent:latest
 
 WORKDIR /var/task
 COPY . /var/task/

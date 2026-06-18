@@ -260,3 +260,62 @@ def test_bundler_generation_fails(mock_jvagent_app: "Path", monkeypatch: "Monkey
             main()
 
         assert exc_info.value.code == 1
+
+
+def test_pip_get_packages_command_discovers_nested_actions(
+    temp_dir: "Path", monkeypatch: "MonkeyPatch", capsys: "CaptureFixture[str]"
+) -> None:
+    """Test pip-get-packages discovers dependencies from nested core actions."""
+    jvagent_root = temp_dir / "jvagent_root"
+    core_actions_path = jvagent_root / "jvagent" / "action"
+    core_actions_path.mkdir(parents=True)
+
+    immediate_action = core_actions_path / "basic_action"
+    immediate_action.mkdir()
+    (immediate_action / "info.yaml").write_text(
+        """package:
+  name: core/basic_action
+  dependencies:
+    pip:
+      - requests>=2.31.0
+"""
+    )
+
+    nested_action = core_actions_path / "google" / "google_drive_action"
+    nested_action.mkdir(parents=True)
+    (nested_action / "info.yaml").write_text(
+        """package:
+  name: core/google_drive_action
+  dependencies:
+    pip:
+      - google-api-python-client>=2.0.0
+"""
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["jvdeploy", "pip-get-packages", "--jvagent-path", str(jvagent_root)],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 0
+
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "requests>=2.31.0 google-api-python-client>=2.0.0"
+
+
+def test_pip_get_packages_command_invalid_path(monkeypatch: "MonkeyPatch") -> None:
+    """Test pip-get-packages fails when jvagent path does not exist."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["jvdeploy", "pip-get-packages", "--jvagent-path", "/invalid/path"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 1

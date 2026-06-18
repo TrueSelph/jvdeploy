@@ -55,7 +55,7 @@ def test_bundler_generate_dockerfile_success(mock_jvagent_app: Path) -> None:
 
     # Check Dockerfile content
     dockerfile_content = dockerfile_path.read_text()
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
     assert "# Action-specific pip dependencies" in dockerfile_content
     assert "myorg/action1" in dockerfile_content
     assert "myorg/action2" in dockerfile_content
@@ -78,7 +78,7 @@ def test_bundler_generate_dockerfile_no_dependencies(
 
     # Check Dockerfile content
     dockerfile_content = dockerfile_path.read_text()
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
     assert "# Action-specific pip dependencies" not in dockerfile_content
 
 
@@ -96,7 +96,7 @@ def test_bundler_generate_dockerfile_no_agents(mock_app_no_agents: Path) -> None
 
     # Check Dockerfile content
     dockerfile_content = dockerfile_path.read_text()
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
 
 
 def test_bundler_generate_dockerfile_missing_app_yaml(temp_dir: Path) -> None:
@@ -132,7 +132,7 @@ def test_bundler_generate_dockerfile_overwrites_existing(
     # Check Dockerfile was overwritten
     dockerfile_content = dockerfile_path.read_text()
     assert "OLD CONTENT" not in dockerfile_content
-    assert "FROM registry.v75inc.dev/jvagent/jvagent-base:latest" in dockerfile_content
+    assert "FROM public.ecr.aws/s1x1t0a3/jvagent:latest" in dockerfile_content
 
 
 def test_bundler_generate_dockerfile_missing_base_template(
